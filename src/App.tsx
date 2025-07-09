@@ -7,6 +7,10 @@ import { AppLayout } from "./components/layout/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Publishers from "./pages/Publishers";
 import Inventory from "./pages/Inventory";
+import Sales from "./pages/Sales";
+import TaxSettings from "./pages/TaxSettings";
+import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,10 +26,10 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/publishers" element={<Publishers />} />
             <Route path="/inventory" element={<Inventory />} />
-            <Route path="/sales" element={<div className="p-8 text-center text-muted-foreground">Sales page coming soon...</div>} />
-            <Route path="/tax-settings" element={<div className="p-8 text-center text-muted-foreground">Tax Settings page coming soon...</div>} />
-            <Route path="/reports" element={<div className="p-8 text-center text-muted-foreground">Reports page coming soon...</div>} />
-            <Route path="/settings" element={<div className="p-8 text-center text-muted-foreground">Settings page coming soon...</div>} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/tax-settings" element={<TaxSettings />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
