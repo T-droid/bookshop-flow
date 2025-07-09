@@ -61,7 +61,30 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				/* KICD Brand Colors */
+				kicd: {
+					navy: 'hsl(var(--kicd-navy))',
+					'navy-light': 'hsl(var(--kicd-navy-light))',
+					coral: 'hsl(var(--kicd-coral))',
+					'coral-light': 'hsl(var(--kicd-coral-light))',
+					'grey-light': 'hsl(var(--kicd-grey-light))',
+					grey: 'hsl(var(--kicd-grey))'
 				}
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-accent': 'var(--gradient-accent)'
+			},
+			boxShadow: {
+				'card': 'var(--shadow-card)',
+				'elevated': 'var(--shadow-elevated)'
+			},
+			transitionProperty: {
+				'smooth': 'var(--transition-smooth)'
+			},
+			fontFamily: {
+				sans: ['Inter', 'system-ui', 'sans-serif']
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
