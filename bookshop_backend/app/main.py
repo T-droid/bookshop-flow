@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from db.base import create_db_and_tables
+from app.db.base import create_db_and_tables
 
 app = FastAPI()
 
