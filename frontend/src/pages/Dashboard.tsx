@@ -1,3 +1,4 @@
+import {useState, useEffect} from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -12,8 +13,19 @@ import {
   ShoppingCart,
   Calculator
 } from "lucide-react"
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function Dashboard() {
+
+//simulation for loading state
+  const [isLoading, setLoading] = useState(true)  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false)
+    }, 2000) // Simulate a 2 second loading time
+    return () => clearTimeout(timer)
+  }, [])
+
   // Mock data - in real app this would come from API
   const metrics = {
     totalTitles: 247,
@@ -36,6 +48,9 @@ export default function Dashboard() {
     { receipt: "RCP-003", items: 5, amount: 2100.00, time: "2:45 PM" },
   ]
 
+  if (isLoading) {
+    return <Skeleton />
+  }
   return (
     <div className="space-y-6">
       {/* Page Header */}
