@@ -21,6 +21,10 @@ class User(SQLModel, table=True):
     roles: Optional["Role"] = Relationship(back_populates="users", link_model="UserRoles")
     tenant: Optional['Tenant'] = Relationship(back_populates="users")
     sales: List["Sales"] = Relationship(back_populates="user")
+    webauthn_credentials: List["WebAuthnCredential"] = Relationship(back_populates="user")
+    otp_codes: List["OtpCode"] = Relationship(back_populates="user")
+    backup_codes: List["BackUpCodes"] = Relationship(back_populates="user")
+    audit_logs: List["AuditLog"] = Relationship(back_populates="user")
 
     def __repr__(self):
         return f"User(id={self.id}, username={self.username}, email={self.email})"

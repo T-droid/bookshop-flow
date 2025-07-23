@@ -23,6 +23,9 @@ class Tenant(SQLModel, table=True):
     purchase_orders: List["PurchaseOrder"] = Relationship(back_populates="tenant")
     settings: "Settings" = Relationship(back_populates="tenant")
     receipt_templates: List["ReceiptTemplates"] = Relationship(back_populates="tenant")
+    monthly_sales_summaries: List["MonthlySalesSummary"] = Relationship(back_populates="tenant")
+    tax_rates: List["TaxRates"] = Relationship(back_populates="tenant")
+    audit_logs: List["AuditLog"] = Relationship(back_populates="tenant")
 
     def __repr__(self):
         return f"Tenant(id={self.id}, name={self.name}, contact_email={self.contact_email})"
