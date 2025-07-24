@@ -80,7 +80,7 @@ Backend (FastAPI)
 ⚙️ Setup Instructions
 1. Clone the Repo
 ```bash
-git clone https://github.com/your-org/bookshop-ims.git
+git clone https://github.com/T-droid/bookshop_flow.git
 cd bookshop-ims
 ```
 
