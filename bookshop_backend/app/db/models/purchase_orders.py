@@ -5,7 +5,7 @@ import uuid
 
 class PurchaseOrder(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    tenant_id: uuid.UUID = Field(foreign_key="tenant.id")
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
     supplier_id: uuid.UUID = Field(foreign_key="supplier.id")
     order_date: datetime = Field(default_factory=datetime.now)
     total_amount: float = Field(gt=0)

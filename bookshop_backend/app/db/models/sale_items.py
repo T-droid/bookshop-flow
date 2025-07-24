@@ -4,9 +4,8 @@ from typing import Optional, List
 import uuid
 
 class SaleItems(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
-    sale_id: uuid.UUID = Field(foreign_key="sales.id")
-    book_id: uuid.UUID = Field(foreign_key="book.id")
+    sale_id: uuid.UUID = Field(foreign_key="sales.id", primary_key=True, ondelete="CASCADE")
+    book_id: uuid.UUID = Field(foreign_key="book.id", primary_key=True)
     quantity: int = Field(gt=0)
     unit_price: float = Field(gt=0)
 

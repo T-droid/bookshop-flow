@@ -5,10 +5,10 @@ from datetime import datetime
 
 class Sales(SQLModel, table=True):
     id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
-    tenant_id: uuid.UUID = Field(foreign_key="tenant.id")
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
     user_id: uuid.UUID = Field(foreign_key="user.id")
     sale_date: datetime = Field(default_factory=datetime.now)
-    total_amount: float = Field(gt=0)
+    total_amount: float = Field(ge=0, default=0.0)
     payment_method: Optional[str] = Field(default=None)
     discount: Optional[str] = Field(default=None)
 

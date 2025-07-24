@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB as jsonb
 
 class AuditLog(SQLModel, table=True):
     id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
-    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", nullable=False)
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", nullable=False, ondelete="CASCADE")
     user_id: Optional[uuid.UUID] = Field(foreign_key="user.id", nullable=True, ondelete="SET NULL")
     table_name: str = Field(max_length=100, nullable=False)
     record_id: uuid.UUID = Field(nullable=False)

@@ -4,7 +4,7 @@ from typing import Optional, List
 import uuid
 
 class PurchaseOrderItems(SQLModel, table=True):
-    order_id: uuid.UUID = Field(foreign_key=True, primary_key=True)
+    order_id: uuid.UUID = Field(foreign_key=True, primary_key=True, ondelete="CASCADE")
     book_id: uuid.UUID = Field(foreign_key=True, primary_key=True)
     quantity: int = Field(ge=0, default=0)
     unit_cost: float = Field(nullable=False)

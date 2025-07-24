@@ -4,8 +4,8 @@ import uuid
 
 
 class TenantPublisher(SQLModel, table=True):
-    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", primary_key=True)
-    publisher_id: uuid.UUID = Field(foreign_key="publisher.id", primary_key=True)
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", primary_key=True, ondelete="CASCADE")
+    publisher_id: uuid.UUID = Field(foreign_key="publisher.id", primary_key=True, ondelete="SET NULL")
 
     # Relationships
     tenant: Optional["Tenant"] = Relationship(back_populates="publishers")
