@@ -1,11 +1,15 @@
 from sqlmodel import Field, SQLModel, Relationship
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 import uuid
+
+if TYPE_CHECKING:
+    from .tenants import Tenant
+    from .publishers import Publisher
 
 
 class TenantPublisher(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", primary_key=True, ondelete="CASCADE")
-    publisher_id: uuid.UUID = Field(foreign_key="publisher.id", primary_key=True, ondelete="SET NULL")
+    publisher_id: uuid.UUID = Field(foreign_key="publisher.id", primary_key=True, ondelete="CASCADE")
 
     # Relationships
     tenant: Optional["Tenant"] = Relationship(back_populates="publishers")

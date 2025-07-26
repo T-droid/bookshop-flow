@@ -1,7 +1,25 @@
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
+
+# Import link models directly since they're needed at runtime
+from .tenants_publishers import TenantPublisher
+from .tenant_supplier import TenantSupplier
+
+if TYPE_CHECKING:
+    from .publishers import Publisher
+    from .users import User
+    from .suppliers import Supplier
+    from .books import Book
+    from .inventory import Inventory
+    from .sales import Sales
+    from .purchase_orders import PurchaseOrder
+    from .tenant_settings import Settings
+    from .receipt_templates import ReceiptTemplates
+    from .monthly_sales_summary import MonthlySalesSummary
+    from .tax_rates import TaxRates
+    from .audit_logs import AuditLog
 
 
 class Tenant(SQLModel, table=True):
@@ -14,9 +32,9 @@ class Tenant(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
     # Relationships
-    publishers: List["Publisher"] = Relationship(back_populates="tenants", link_model="TenantPublisher")
+    publishers: List["Publisher"] = Relationship(back_populates="tenants", link_model=TenantPublisher)
     users: List["User"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"})
-    suppliers: List["Supplier"] = Relationship(back_populates="tenants", link_model="TenantSupplier")
+    suppliers: List["Supplier"] = Relationship(back_populates="tenants", link_model=TenantSupplier)
     books: List["Book"] = Relationship(back_populates="tenant")
     inventory: List["Inventory"] = Relationship(back_populates="tenants")
     sales: List["Sales"] = Relationship(back_populates="tenant")

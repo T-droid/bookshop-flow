@@ -1,7 +1,19 @@
 from sqlmodel import Field, SQLModel, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
 from datetime import datetime
+
+# Import link models directly since they're needed at runtime
+from .user_roles import UserRoles
+
+if TYPE_CHECKING:
+    from .roles import Role
+    from .tenants import Tenant
+    from .sales import Sales
+    from .webauthn_credentials import WebAuthnCredential
+    from .otp_codes import OtpCode
+    from .backup_codes import BackUpCodes
+    from .audit_logs import AuditLog
 
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
@@ -18,7 +30,7 @@ class User(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
     # Relationships
-    roles: Optional["Role"] = Relationship(back_populates="users", link_model="UserRoles")
+    roles: Optional["Role"] = Relationship(back_populates="users", link_model=UserRoles)
     tenant: Optional['Tenant'] = Relationship(back_populates="users")
     sales: List["Sales"] = Relationship(back_populates="user")
     webauthn_credentials: List["WebAuthnCredential"] = Relationship(back_populates="user")

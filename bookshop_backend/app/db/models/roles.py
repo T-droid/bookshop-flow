@@ -1,7 +1,13 @@
 from sqlmodel import Field, SQLModel, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
 from datetime import datetime
+
+# Import link models directly since they're needed at runtime
+from .user_roles import UserRoles
+
+if TYPE_CHECKING:
+    from .users import User
 
 
 class Role(SQLModel, table=True):
@@ -12,7 +18,7 @@ class Role(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
     # Relationships
-    users: List["User"] = Relationship(default=[], back_populates="roles", link_model="UserRoles")
+    users: List["User"] = Relationship(back_populates="roles", link_model=UserRoles)
 
     def __repr__(self):
         return f"Role(id={self.id}, name={self.name}, description={self.description})"

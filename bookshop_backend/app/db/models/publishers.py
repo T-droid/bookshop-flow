@@ -1,7 +1,14 @@
 from sqlmodel import Field, SQLModel, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
 from datetime import datetime
+
+# Import link models directly since they're needed at runtime
+from .tenants_publishers import TenantPublisher
+
+if TYPE_CHECKING:
+    from .tenants import Tenant
+    from .books import Book
 
 class Publisher(SQLModel, table=True):
     id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
@@ -12,7 +19,7 @@ class Publisher(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
     # Relationships
-    tenants: List["Tenant"] = Relationship(back_populates="publishers", link_model="TenantPublisher")
+    tenants: List["Tenant"] = Relationship(back_populates="publishers", link_model=TenantPublisher)
     books: List["Book"] = Relationship(back_populates="publisher")
 
     def __repr__(self):

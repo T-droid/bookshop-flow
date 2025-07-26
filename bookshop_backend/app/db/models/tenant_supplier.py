@@ -1,10 +1,14 @@
 from sqlmodel import Field, SQLModel, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
+
+if TYPE_CHECKING:
+    from .tenants import Tenant
+    from .suppliers import Supplier
 
 class TenantSupplier(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", primary_key=True, ondelete="CASCADE")
-    supplier_id: uuid.UUID = Field(foreign_key="supplier.id", primary_key=True, ondelete="SET NULL")
+    supplier_id: uuid.UUID = Field(foreign_key="supplier.id", primary_key=True, ondelete="CASCADE")
 
     # Relationships
     tenant: Optional["Tenant"] = Relationship(back_populates="suppliers")
