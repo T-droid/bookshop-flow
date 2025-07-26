@@ -1,4 +1,7 @@
-import { NavLink, useLocation } from "react-router-dom"
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
   Building2,
@@ -33,13 +36,12 @@ const navigation = [
 
 export function AppSidebar() {
   const { state } = useSidebar()
-  const location = useLocation()
-  const currentPath = location.pathname
+  const pathname = usePathname()
   const collapsed = state === "collapsed"
 
   const isActive = (path: string) => {
-    if (path === "/") return currentPath === "/"
-    return currentPath.startsWith(path)
+    if (path === "/") return pathname === "/"
+    return pathname.startsWith(path)
   }
 
   const getNavClass = (active: boolean) =>
@@ -81,14 +83,13 @@ export function AppSidebar() {
               {navigation.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      end={item.url === "/"}
+                    <Link 
+                      href={item.url}
                       className={`${getNavClass(isActive(item.url))} rounded-lg px-3 py-2.5`}
                     >
                       <item.icon className={`${collapsed ? "mx-auto" : "mr-3"} h-4 w-4 flex-shrink-0`} />
                       {!collapsed && <span className="text-sm">{item.title}</span>}
-                    </NavLink>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
