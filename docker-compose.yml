@@ -1,0 +1,79 @@
+version: "3.8"
+services:
+  supertokens-core:
+    image: supertokens/supertokens-postgresql
+    environment:
+      - POSTGRESQL_HOST=postgres
+      - POSTGRESQL_PORT=5432
+      - POSTGRESQL_USER=your-user
+      - POSTGRESQL_PASSWORD=your-password
+      - POSTGRESQL_DATABASE_NAME=supertokens
+      - API_KEY=your-api-key
+    ports:
+      - "3567:3567"
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=your-user
+      - POSTGRES_PASSWORD=your-password
+      - POSTGRES_DB=supertokens
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  auth-service:
+    image: supertokens-auth-service
+    build: ./supertokens-auth-service
+    environment:
+      - SUPERTOKENS_CORE_URI=http://supertokens-core:3567
+      - SUPERTOKENS_API_KEY=your-api-key
+      - API_DOMAIN=https://auth.yourapp.com
+      - WEBSITE_DOMAIN=https://yourapp.com
+      - FASTAPI_DOMAIN=https://api.yourapp.com
+    ports:
+      - "3000:3000"
+    depends_on:
+      - supertokens-core
+    networks:
+      - app-network
+
+  fastapi:
+    image: fastapi-app
+    build: ./fastapi-app
+    environment:
+      - AUTH_SERVICE_DOMAIN=https://auth.yourapp.com
+      - WEBSITE_DOMAIN=https://yourapp.com
+    ports:
+      - "9000:9000"
+    depends_on:
+      - auth-service
+    networks:
+      - app-network
+
+  nextjs:
+    image: nextjs-app
+    build: ./nextjs-app
+    environment:
+      - NEXT_PUBLIC_AUTH_SERVICE_DOMAIN=https://auth.yourapp.com
+      - NEXT_PUBLIC_API_DOMAIN=https://api.yourapp.com
+      - PORT=3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - auth-service
+      - fastapi
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

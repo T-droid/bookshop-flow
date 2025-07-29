@@ -16,6 +16,8 @@ import {
   Calculator
 } from "lucide-react"
 import { Skeleton } from '@/components/ui/skeleton'
+import { initSuperTokens } from '@/lib/supertokens'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function Dashboard() {
 
@@ -26,7 +28,11 @@ export default function Dashboard() {
       setLoading(false)
     }, 2000) // Simulate a 2 second loading time
     return () => clearTimeout(timer)
-  }, [])
+  }, []);
+
+  useEffect(() => {
+    initSuperTokens();
+  }, []);
 
   // Mock data - in real app this would come from API
   const metrics = {
@@ -54,6 +60,7 @@ export default function Dashboard() {
     return <Skeleton />
   }
   return (
+    <ProtectedRoute>
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
@@ -232,5 +239,6 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     </div>
+    </ProtectedRoute>
   )
 }
