@@ -1,7 +1,15 @@
 from sqlmodel import Field, SQLModel, Relationship
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
 from datetime import datetime
+
+if TYPE_CHECKING:
+    from .tenants import Tenant
+    from .publishers import Publisher
+    from .inventory import Inventory
+    from .sale_items import SaleItems
+    from .monthly_sales_summary import MonthlySalesSummary
+    from .purchase_order_items import PurchaseOrderItems
 
 class Book(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -20,3 +28,6 @@ class Book(SQLModel, table=True):
     inventory: Optional["Inventory"] = Relationship(back_populates="books")
     sale_items: List["SaleItems"] = Relationship(back_populates="book")
     monthly_sales_summaries: List["MonthlySalesSummary"] = Relationship(back_populates="book")
+    purchase_order_items: List["PurchaseOrderItems"] = Relationship(back_populates="book")
+
+    
