@@ -1,4 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
+import httpx
+from typing import Annotated
+
 from app.db.base import create_db_and_tables
 from fastapi.middleware.cors import CORSMiddleware
 
