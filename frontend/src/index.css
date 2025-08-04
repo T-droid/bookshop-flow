@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Bookshop IMS Design System - Literary inspired palette */
+
+@layer base {
+  :root {
+    /* Core bookshop theme - warm browns and orange */
+    --background: 35 20% 98%;
+    --foreground: 25 25% 15%;
+
+    --card: 35 25% 96%;
+    --card-foreground: 25 25% 15%;
+
+    --popover: 35 25% 96%;
+    --popover-foreground: 25 25% 15%;
+
+    /* Primary - Rich book spine brown */
+    --primary: 25 35% 25%;
+    --primary-foreground: 35 20% 98%;
+    --primary-glow: 25 45% 35%;
+
+    /* Secondary - Warm cream */
+    --secondary: 35 30% 92%;
+    --secondary-foreground: 25 35% 25%;
+
+    /* Muted - Soft paper tones */
+    --muted: 35 25% 94%;
+    --muted-foreground: 25 20% 45%;
+
+    /* Accent - Burnt orange highlights */
+    --accent: 20 85% 55%;
+    --accent-foreground: 35 20% 98%;
+    --accent-glow: 20 90% 65%;
+
+    /* System colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 35 20% 98%;
+
+    --border: 35 20% 88%;
+    --input: 35 20% 88%;
+    --ring: 25 35% 25%;
+
+    --radius: 0.75rem;
+
+    /* Bookshop specific tokens */
+    --bookshelf: 25 30% 20%;
+    --parchment: 45 40% 95%;
+    --leather: 15 45% 30%;
+    --gold: 45 85% 55%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-glow)));
+    --gradient-shelf: linear-gradient(180deg, hsl(var(--bookshelf)), hsl(var(--leather)));
+    --gradient-page: linear-gradient(180deg, hsl(var(--background)), hsl(var(--parchment)));
+
+    /* Shadows */
+    --shadow-book: 0 4px 20px hsl(var(--primary) / 0.15);
+    --shadow-card: 0 2px 15px hsl(var(--primary) / 0.08);
+    --shadow-glow: 0 0 30px hsl(var(--accent) / 0.3);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-page: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark bookshop theme - deep library tones */
+    --background: 25 15% 8%;
+    --foreground: 35 20% 95%;
+
+    --card: 25 20% 12%;
+    --card-foreground: 35 20% 95%;
+
+    --popover: 25 20% 12%;
+    --popover-foreground: 35 20% 95%;
+
+    /* Primary - Warm gold in dark */
+    --primary: 45 85% 65%;
+    --primary-foreground: 25 15% 8%;
+    --primary-glow: 45 90% 75%;
+
+    /* Secondary - Dark leather */
+    --secondary: 25 25% 18%;
+    --secondary-foreground: 35 20% 95%;
+
+    /* Muted - Dark paper */
+    --muted: 25 20% 15%;
+    --muted-foreground: 35 15% 65%;
+
+    /* Accent - Bright orange in dark */
+    --accent: 20 90% 65%;
+    --accent-foreground: 25 15% 8%;
+    --accent-glow: 20 95% 75%;
+
+    /* System colors */
+    --destructive: 0 75% 65%;
+    --destructive-foreground: 25 15% 8%;
+
+    --border: 25 15% 20%;
+    --input: 25 15% 20%;
+    --ring: 45 85% 65%;
+
+    /* Dark bookshop specific */
+    --bookshelf: 25 20% 5%;
+    --parchment: 35 15% 12%;
+    --leather: 15 30% 10%;
+    --gold: 45 85% 65%;
+
+    /* Dark gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-glow)));
+    --gradient-shelf: linear-gradient(180deg, hsl(var(--bookshelf)), hsl(var(--leather)));
+    --gradient-page: linear-gradient(180deg, hsl(var(--background)), hsl(var(--parchment)));
+
+    /* Dark shadows */
+    --shadow-book: 0 8px 30px hsl(0 0% 0% / 0.4);
+    --shadow-card: 0 4px 25px hsl(0 0% 0% / 0.3);
+    --shadow-glow: 0 0 40px hsl(var(--accent) / 0.4);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
