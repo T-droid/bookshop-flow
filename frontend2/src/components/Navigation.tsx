@@ -1,6 +1,7 @@
 import { Book, BarChart3, Package, Users, Settings, FileText, Calculator } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true },
@@ -13,6 +14,11 @@ const navItems = [
 ];
 
 export function Navigation() {
+  const navigate = useNavigate();
+
+  const handleNavigate = (href: string) => {
+    navigate(href, { replace: true });
+  }
   return (
     <nav className="bg-card border-b border-border shadow-card-soft">
       <div className="container mx-auto px-6">
@@ -36,6 +42,7 @@ export function Navigation() {
                 variant={item.active ? "accent" : "ghost"}
                 size="sm"
                 className="gap-2"
+                onClick={() => handleNavigate(item.href)}
               >
                 <item.icon className="w-4 h-4" />
                 {item.label}
