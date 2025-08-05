@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { logIn, isLoading } = useAuth();
+  const { logIn, isLoading, isAuthenticated } = useAuth();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,9 @@ export default function Login() {
       }
       await logIn(email, password)
       console.log("logging in...")
-      navigate('/');
+      if (!isAuthenticated) 
+        navigate('/');
+        
     } catch (err) {
       const error = err as AxiosError<{ detail?: string }>;
       if (error.response?.status === 401) {
