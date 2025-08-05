@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from typing import Annotated
 
-from app.db.base import create_db_and_tables
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -29,7 +28,7 @@ app.include_router(
 
 @app.on_event("startup")
 async def on_startup():
-    create_db_and_tables()
+    pass
 
 @app.get("/")
 async def root():

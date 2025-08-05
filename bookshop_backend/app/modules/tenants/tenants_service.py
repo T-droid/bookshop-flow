@@ -1,129 +1,169 @@
 from ...db import models
 from ...db.session import SessionDep
 from .tenants_model import TenantCreate, TenantUpdate, TenantResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Result
-from typing import List, Optional
-from fastapi import HTTPException, status, Depends, Query
-from ...utils.redis_client import RedisClient
-import uuid
 from logging import getLogger
+from .tenants_repository import TenantRepository
+from app.utils.result import ServiceResult
+import uuid
+
+
 logger = getLogger(__name__)
 
-async def create_tenant(
-        tenant: TenantCreate,
-        db: SessionDep
-    ):
-    name = tenant.name
-    address = tenant.address,
-    contact_email = tenant.contact_email,
-    contact_phone = tenant.contact_phone
-   
-    result: Result[models.Tenant] = await db.execute(
-        select(models.Tenant).where(models.Tenant.name == name)
-    )
-    existing_tenant: Optional[models.Tenant] = result.scalars().first()
 
-    if existing_tenant:
-        logger.error(f"Tenant with name '{name}' already exists.")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Tenant with name '{name}' already exists."
-        )
+class TenantService:
+    """
+    Service for managing tenant operations.
+    """
 
-    new_tenant = models.Tenant(
-        name=name,
-        address=address,
-        contact_email=contact_email,
-        contact_phone=contact_phone
-    )
+    def __init__(self, db: SessionDep):
+        self.db = db 
+        self.repo = TenantRepository(db)
 
-    return {"message": f"tenant {new_tenant.name} created succesfully"}
-    # db.add(new_tenant)    
-    # await db.commit()
-    
-    # await db.refresh(new_tenant)
-    
-    # return "Tenant created successfully", TenantResponse.model_validate(new_tenant)
-        
-async def get_tenants(
-    db: SessionDep
-    ) -> List[TenantResponse]:
-    result: Result[models.Tenant] = await db.execute(
-        select(models.Tenant)
-    )
-    tenants: List[models.Tenant] = result.scalars().all()
-    
-    if not tenants:
-        logger.info("No tenants found.")
-        return []
-    
-    return [TenantResponse.model_validate(tenant) for tenant in tenants]    
+    async def create_tenant(self, tenant_create: TenantCreate) -> ServiceResult:
+        """
+        Create a new tenant in the database.
+        """
+        try:
+            existing = await self.repo.get_by_name(tenant_create.name)
+            if existing:
+                logger.error(f"Tenant with name '{tenant_create.name}' already exists.")
+                return ServiceResult(
+                    success=False,
+                    error=f"Tenant with name '{tenant_create.name}' already exists."
+                )
+            
+            new_tenant = models.Tenant(
+                name=tenant_create.name,
+                address=tenant_create.address,
+                contact_email=tenant_create.contact_email,
+                contact_phone=tenant_create.contact_phone
+            )
+            
+            created_tenant = await self.repo.create_tenant(new_tenant)
+            logger.info(f"Tenant '{created_tenant.name}' created successfully.")
+            
+            return ServiceResult(
+                data=TenantResponse.model_validate(created_tenant),
+                success=True
+            )
+        except Exception as e:
+            logger.error(f"Error creating tenant: {e}")
+            return ServiceResult(
+                success=False,
+                error=f"Failed to create tenant: {str(e)}"
+            )
 
-async def get_tenant_by_id(
-    tenant_id: uuid.uuid4, db: SessionDep
-    ) -> TenantResponse:
-    result: Result[models.Tenant] = await db.execute(
-        select(models.Tenant).where(models.Tenant.id == tenant_id)
-    )
-    tenant: Optional[models.Tenant] = result.scalars().first()
-    
-    if not tenant:
-        logger.error(f"Tenant with ID '{tenant_id}' not found.")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tenant with ID '{tenant_id}' not found."
-        )
-    
-    TenantResponse.model_validate(tenant)
-    return {
-        "id": tenant.id,
-        "name": tenant.name,
-        "contact_email": tenant.contact_email,
-        "contact_phone": tenant.contact_phone,
-        "address": tenant.address
-    }
+    async def get_tenants(self) -> ServiceResult:
+        """
+        Retrieve a list of all tenants.
+        """
+        try:
+            tenants = await self.repo.get_all()
+            tenant_responses = [TenantResponse.model_validate(tenant) for tenant in tenants]
+            
+            return ServiceResult(
+                data=tenant_responses,
+                success=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching tenants: {e}")
+            return ServiceResult(
+                success=False,
+                error=f"Failed to fetch tenants: {str(e)}"
+            )
 
+    async def get_tenant_by_id(self, tenant_id: uuid.UUID) -> ServiceResult:
+        """
+        Retrieve a tenant by ID.
+        """
+        try:
+            tenant = await self.repo.get_by_id(tenant_id)
+            if not tenant:
+                return ServiceResult(
+                    success=False,
+                    error=f"Tenant with ID '{tenant_id}' not found."
+                )
+            
+            return ServiceResult(
+                data=TenantResponse.model_validate(tenant),
+                success=True
+            )
+        except Exception as e:
+            logger.error(f"Error fetching tenant {tenant_id}: {e}")
+            return ServiceResult(
+                success=False,
+                error=f"Failed to fetch tenant: {str(e)}"
+            )
 
-async def search_tenant(
-    db: SessionDep,
-    search_term: str = Query(..., min_length=1, max_length=100),    
-) -> List[TenantResponse]:
-    result: Result[models.Tenant] = await db.execute(
-        select(models.Tenant).where(
-            models.Tenant.name.ilike(f"%{search_term}%")
-        )
-    )
-    tenants: List[models.Tenant] = result.scalars().all()
-    
-    if not tenants:
-        logger.info(f"No tenants found matching '{search_term}'.")
-        return []
-    
-    return [TenantResponse.model_validate(tenant) for tenant in tenants]
+    async def search_tenant(self, search_term: str) -> ServiceResult:
+        """
+        Search for tenants by name.
+        """
+        try:
+            tenants = await self.repo.search_by_name(search_term)
+            tenant_responses = [TenantResponse.model_validate(tenant) for tenant in tenants]
+            
+            return ServiceResult(
+                data=tenant_responses,
+                success=True
+            )
+        except Exception as e:
+            logger.error(f"Error searching tenants: {e}")
+            return ServiceResult(
+                success=False,
+                error=f"Failed to search tenants: {str(e)}"
+            )
 
+    async def update_tenant(self, tenant_id: uuid.UUID, tenant_update: TenantUpdate) -> ServiceResult:
+        """
+        Update an existing tenant.
+        """
+        try:
+            tenant = await self.repo.get_by_id(tenant_id)
+            if not tenant:
+                return ServiceResult(
+                    success=False,
+                    error=f"Tenant with ID '{tenant_id}' not found."
+                )
+            
+            # Update tenant fields
+            for key, value in tenant_update.model_dump(exclude_unset=True).items():
+                setattr(tenant, key, value)
+            
+            updated_tenant = await self.repo.update_tenant(tenant)
+            
+            return ServiceResult(
+                data=TenantResponse.model_validate(updated_tenant),
+                success=True
+            )
+        except Exception as e:
+            logger.error(f"Error updating tenant {tenant_id}: {e}")
+            return ServiceResult(
+                success=False,
+                error=f"Failed to update tenant: {str(e)}"
+            )
 
-async def update_tenant(
-    tenant_id: uuid.UUID,
-    tenant_update: TenantUpdate,
-    db: SessionDep
-) -> TenantResponse:
-    result: Result[models.Tenant] = await db.execute(
-        select(models.Tenant).where(models.Tenant.id == tenant_id)
-    )
-    tenant: Optional[models.Tenant] = result.scalars().first()
-    
-    if not tenant:
-        logger.error(f"Tenant with ID '{tenant_id}' not found.")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tenant with ID '{tenant_id}' not found."
-        )
-    
-    for key, value in tenant_update.model_dump(exclude_unset=True).items():
-        setattr(tenant, key, value)
-    
-    await db.commit()
-    await db.refresh(tenant)
-    
-    return TenantResponse.model_validate(tenant)
+    async def delete_tenant(self, tenant_id: uuid.UUID) -> ServiceResult:
+        """
+        Delete a tenant.
+        """
+        try:
+            tenant = await self.repo.get_by_id(tenant_id)
+            if not tenant:
+                return ServiceResult(
+                    success=False,
+                    error=f"Tenant with ID '{tenant_id}' not found."
+                )
+            
+            await self.repo.delete_tenant(tenant)
+            
+            return ServiceResult(
+                success=True,
+                message=f"Tenant '{tenant.name}' deleted successfully."
+            )
+        except Exception as e:
+            logger.error(f"Error deleting tenant {tenant_id}: {e}")
+            return ServiceResult(
+                success=False,
+                error=f"Failed to delete tenant: {str(e)}"
+            )
