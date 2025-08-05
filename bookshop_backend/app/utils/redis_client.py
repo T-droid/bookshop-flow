@@ -1,4 +1,3 @@
-# redis_client.py
 import asyncio
 import logging
 from typing import Optional
