@@ -1,6 +1,9 @@
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 import uuid
+from typing import TYPE_CHECKING
+
+from .users import User
 
 class OtpCode(SQLModel, table=True):
     id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)

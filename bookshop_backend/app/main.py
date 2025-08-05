@@ -4,11 +4,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from typing import Annotated
 
-from app.db.base import create_db_and_tables
 from fastapi.middleware.cors import CORSMiddleware
 
 
-from app.modules.auth.auth_controller import router
+from app.modules.tenants.tenants_controller import router as tenant_router
 
 app = FastAPI()
 
@@ -21,17 +20,16 @@ app.add_middleware(
 )
 
 app.include_router(
-    router,
-    prefix="/auth",
-    tags=["auth"],
+    tenant_router,
+    prefix="/tenants",
+    tags=["Tenants"],
     responses={404: {"description": "Not found"}},
 )
 
 @app.on_event("startup")
 async def on_startup():
-    create_db_and_tables()
+    pass
 
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
-

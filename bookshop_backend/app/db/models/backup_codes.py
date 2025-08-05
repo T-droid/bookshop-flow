@@ -1,7 +1,9 @@
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 import uuid
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+from .users import User
 
 class BackUpCodes(SQLModel, table=True):
     id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
