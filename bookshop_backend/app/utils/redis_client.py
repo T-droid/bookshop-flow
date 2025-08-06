@@ -23,7 +23,7 @@ class RedisClient:
 
             for attempt in range(1, self.max_retries + 1):
                 try:
-                    self.client = await from_url(
+                    self.client = from_url(
                         self.redis_url,
                         encoding="utf-8",
                         decode_responses=True

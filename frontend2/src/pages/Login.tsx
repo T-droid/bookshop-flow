@@ -33,16 +33,22 @@ export default function Login() {
         return;
       }
       await logIn(email, password)
-      console.log("logging in...")
       if (!isAuthenticated) 
         navigate('/');
         
-    } catch (err) {
+    } catch (err) {      
       const error = err as AxiosError<{ detail?: string }>;
+      
       if (error.response?.status === 401) {
         setError('Invalid email or password');
+      } else if (error.response?.status === 422) {
+        setError('Please check your email and password format');
+      } else if (error.response?.status === 500) {
+        setError('Server error. Please try again later');
+      } else if (error.response?.data?.detail) {
+        setError(error.response.data.detail);
       } else {
-        setError(error.response?.data?.detail || 'An unexpected error occurred');
+        setError('An unexpected error occurred. Please try again');
       }
     }
   };

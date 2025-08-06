@@ -1,4 +1,5 @@
 import React, { useState, useEffect, type ReactNode, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AuthContext } from './AuthContext';
 import apiClient from '@/api/api';
 import { setAccessToken, getAccessToken } from '@/api/tokenManager';
@@ -8,11 +9,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const accessTokenRef = useRef<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const location = useLocation();
 
 
   useEffect(() => {
+    if (location.pathname.startsWith('/auth')) {
+      setIsLoading(false);
+      return;
+    }
     refresh()    
-  }, [])
+  }, [location.pathname]);
 
   const refresh = () => {
     apiClient.post("/auth/refresh")
@@ -29,21 +35,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(false);
       })
   }
-  const logIn = (email: string, password: string) => {
+  const logIn = async (email: string, password: string) => {
     setIsLoading(true);
-    apiClient.post("/auth/login", {
-      email,
-      password
-    }).then(res => {
-      setAccessToken(res.data.access_token)
-      accessTokenRef.current = getAccessToken()
+    
+    try {
+      const res = await apiClient.post("/auth/login", {
+        email,
+        password
+      });
+      
+      setAccessToken(res.data.access_token);
+      accessTokenRef.current = getAccessToken();
       setIsAuthenticated(true);
-    }).catch(err => {      
-      throw err
-    })
-    .finally(() => {
+      
+    } catch (err) {
+      setAccessToken(null);
+      setIsAuthenticated(false);
+      throw err;
+    } finally {
       setIsLoading(false);
-    })
+    }
   }
 
 
