@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Form, Response, Request
+from fastapi import APIRouter, HTTPException, status, Body, Response, Request
 from fastapi.responses import JSONResponse
 from typing import Annotated
 
@@ -15,10 +15,10 @@ class UserCredentials(BaseModel):
     email: str
     password: str
 
-@router.post('/login')
+@router.post('/login', status_code=status.HTTP_202_ACCEPTED)
 async def login(
     response: Response,
-    credentials: Annotated[UserCredentials, Form(...)],
+    credentials: Annotated[UserCredentials, Body(...)],
     db: SessionDep
     ):
     service = AuthService(db)
@@ -59,7 +59,7 @@ async def login(
         "message": "Login successfull"
     })
 
-@router.post("/refresh")
+@router.post("/refresh", status_code=status.HTTP_201_CREATED)
 async def refresh(request: Request, db: SessionDep):
     service = AuthService(db)
     refresh_token = request.cookies.get("refresh_token")
@@ -68,16 +68,16 @@ async def refresh(request: Request, db: SessionDep):
     if payload.error:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=payload.data.error
+            detail=payload.error
             )
 
     return JSONResponse(content={
         "access_token": payload.data["access_token"],
-        "token_type": payload.data["Bearer"]
+        "token_type": payload.data["token_type"]
     })
 
 
-@router.post("/logout")
+@router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(request: Request):
     response = JSONResponse(content={"message": "Logout successful"})
     response.delete_cookie("refresh_token")
