@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 from app.modules.tenants.tenants_controller import router as tenant_router
+from app.modules.auth.auth_controller import router as auth_router
 
 app = FastAPI()
 
@@ -23,6 +24,13 @@ app.include_router(
     tenant_router,
     prefix="/tenants",
     tags=["Tenants"],
+    responses={404: {"description": "Not found"}},
+)
+
+app.include_router(
+    auth_router,
+    prefix="/auth",
+    tags=["Auth"],
     responses={404: {"description": "Not found"}},
 )
 

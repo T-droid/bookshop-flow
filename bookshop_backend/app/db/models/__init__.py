@@ -1,14 +1,14 @@
 # Import all models to ensure they're registered with SQLModel
 # Order matters for models with relationships
 
+from .base_user import UserBase
+from .superadmins import SuperAdmin
 # Import link/junction tables first
-from .user_roles import UserRoles
 from .tenant_supplier import TenantSupplier
 from .tenants_publishers import TenantPublisher
 
 # Import base models
 from .tenants import Tenant
-from .roles import Role
 from .users import User
 from .publishers import Publisher
 from .suppliers import Supplier
@@ -36,11 +36,11 @@ from .backup_codes import BackUpCodes
 from .audit_logs import AuditLog
 
 __all__ = [
-    "UserRoles",
+    "UserBase",
+    "SuperAdmin",
     "TenantSupplier", 
     "TenantPublisher",
     "Tenant",
-    "Role",
     "User",
     "Publisher",
     "Supplier",

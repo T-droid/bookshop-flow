@@ -21,29 +21,30 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+    
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/publishers" element={<Publishers />} />
-            <Route path="/sales" element={<Sales />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/tax-settings" element={<TaxSettings />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/audit-logs" element={<AuditLogs />} />
-            <Route path="/bookshop-admin" element={<BookshopAdmin />} />
-            <Route path="/super-admin" element={<SuperAdmin />} />
-            <Route path="/auth/login" element={<Login />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/publishers" element={<Publishers />} />
+              <Route path="/sales" element={<Sales />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/tax-settings" element={<TaxSettings />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/audit-logs" element={<AuditLogs />} />
+              <Route path="/bookshop-admin" element={<BookshopAdmin />} />
+              <Route path="/super-admin" element={<SuperAdmin />} />
+              <Route path="/auth/login" element={<Login />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </AuthProvider>
   </QueryClientProvider>
 );
 
