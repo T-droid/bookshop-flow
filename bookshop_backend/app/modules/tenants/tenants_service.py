@@ -114,7 +114,7 @@ class TenantService:
                 error=f"Failed to search tenants: {str(e)}"
             )
 
-    async def update_tenant(self, tenant_id: uuid.UUID, tenant_update: TenantUpdate) -> ServiceResult:
+    async def update_tenant(self, tenant_id: uuid.UUID, tenant: TenantUpdate) -> ServiceResult:
         """
         Update an existing tenant.
         """
@@ -125,21 +125,16 @@ class TenantService:
                     success=False,
                     error=f"Tenant with ID '{tenant_id}' not found."
                 )
-            
-            # Update tenant fields
-            # check if the name to update is already taken
-            if tenant_update.name:
-                existing = await self.repo.get_by_name(tenant_update.name)
-                if existing and existing.id != tenant_id:
-                    return ServiceResult(
-                        success=False,
-                        error=f"Tenant with name '{tenant_update.name}' already exists."
-                    )
-            for key, value in tenant_update.model_dump(exclude_unset=True).items():
-                setattr(tenant, key, value)
+          
             
             updated_tenant = await self.repo.update_tenant(tenant)
-            
+
+            if not updated_tenant:
+                return ServiceResult(
+                    success=False,
+                    error=f"Tenant with ID '{tenant_id}' not found."
+                )  
+                      
             return ServiceResult(
                 data=TenantResponse.model_validate(updated_tenant),
                 success=True
