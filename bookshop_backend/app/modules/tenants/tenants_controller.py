@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status
-from typing import List
+from fastapi import APIRouter, HTTPException, status, Form, Query
+from typing import List, Optional, Annotated
 import uuid
 from .tenants_model import TenantResponse, TenantCreate, TenantUpdate
 from ...db.session import SessionDep
@@ -9,8 +9,9 @@ router = APIRouter(tags=["Tenants"])
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=TenantResponse)
 async def create_new_tenant(
-    tenant: TenantCreate,
-    db: SessionDep
+    tenant: Annotated[TenantCreate, Form(...)],
+    db: SessionDep,
+    
 ):
     """
     Create a new tenant.
@@ -28,25 +29,31 @@ async def create_new_tenant(
 
 @router.get("/", response_model=List[TenantResponse])
 async def list_tenants(
-    db: SessionDep
+    db: SessionDep,
+    name: Optional[str] = None
+
 ):
     """
-    Retrieve a list of all tenants.
+    Retrieve a list of all tenants, with an optional filter by name.
     """
     service = TenantService(db)
-    result = await service.get_tenants()
+    
+    if name:
+        result = await service.search_tenant(name)
+    else:
+        result = await service.get_tenants()
     
     if not result.success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result.error
         )
-    
+        
     return result.data
 
 @router.get("/search", response_model=List[TenantResponse])
 async def search_tenants(
-    search_term: str,
+    search_term: Annotated[str, Query(..., min_length=1)],
     db: SessionDep
 ):
     """
@@ -88,10 +95,10 @@ async def get_tenant(
     
     return result.data
 
-@router.put("/{tenant_id}", response_model=TenantResponse)
+@router.patch("/{tenant_id}", response_model=TenantResponse)
 async def update_tenant_endpoint(
     tenant_id: uuid.UUID,
-    tenant: TenantUpdate,
+    tenant: Annotated[TenantUpdate, Form(...)],
     db: SessionDep
 ):
     """
