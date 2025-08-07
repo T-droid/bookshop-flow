@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Session
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
@@ -41,7 +41,7 @@ except Exception as e:
 # Create a sessionmaker that will produce AsyncSession objects
 async_session_maker = sessionmaker(
     async_engine,
-    class_=Session,
+    class_=AsyncSession,
     expire_on_commit=False
 )
 

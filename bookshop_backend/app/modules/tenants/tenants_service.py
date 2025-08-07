@@ -6,6 +6,7 @@ from .tenants_repository import TenantRepository
 from app.utils.result import ServiceResult
 import uuid
 
+from typing import Optional
 
 logger = getLogger(__name__)
 
@@ -19,27 +20,20 @@ class TenantService:
         self.db = db 
         self.repo = TenantRepository(db)
 
-    async def create_tenant(self, tenant_create: TenantCreate) -> ServiceResult:
+    async def create_tenant(self, tenant_create_data: TenantCreate) -> ServiceResult:
         """
         Create a new tenant in the database.
         """
         try:
-            existing = await self.repo.get_by_name(tenant_create.name)
+            existing = await self.repo.get_by_name(tenant_create_data.name)
             if existing:
-                logger.error(f"Tenant with name '{tenant_create.name}' already exists.")
+                logger.error(f"Tenant with name '{tenant_create_data.name}' already exists.")
                 return ServiceResult(
                     success=False,
-                    error=f"Tenant with name '{tenant_create.name}' already exists."
+                    error=f"Tenant with name '{tenant_create_data.name}' already exists."
                 )
             
-            new_tenant = models.Tenant(
-                name=tenant_create.name,
-                address=tenant_create.address,
-                contact_email=tenant_create.contact_email,
-                contact_phone=tenant_create.contact_phone
-            )
-            
-            created_tenant = await self.repo.create_tenant(new_tenant)
+            created_tenant = await self.repo.create_tenant(tenant_create_data)
             logger.info(f"Tenant '{created_tenant.name}' created successfully.")
             
             return ServiceResult(
@@ -53,14 +47,14 @@ class TenantService:
                 error=f"Failed to create tenant: {str(e)}"
             )
 
-    async def get_tenants(self) -> ServiceResult:
+    async def get_tenants(self, name: Optional[str] = None, email: Optional[str] = None, created_at: Optional[str] = None) -> ServiceResult:
         """
         Retrieve a list of all tenants.
         """
         try:
-            tenants = await self.repo.get_all()
+            tenants = await self.repo.get_all(name=name, email=email, created_at=created_at)
             tenant_responses = [TenantResponse.model_validate(tenant) for tenant in tenants]
-            
+
             return ServiceResult(
                 data=tenant_responses,
                 success=True
@@ -95,26 +89,7 @@ class TenantService:
                 error=f"Failed to fetch tenant: {str(e)}"
             )
 
-    async def search_tenant(self, search_term: str) -> ServiceResult:
-        """
-        Search for tenants by name.
-        """
-        try:
-            tenants = await self.repo.search_by_name(search_term)
-            tenant_responses = [TenantResponse.model_validate(tenant) for tenant in tenants]
-            
-            return ServiceResult(
-                data=tenant_responses,
-                success=True
-            )
-        except Exception as e:
-            logger.error(f"Error searching tenants: {e}")
-            return ServiceResult(
-                success=False,
-                error=f"Failed to search tenants: {str(e)}"
-            )
-
-    async def update_tenant(self, tenant_id: uuid.UUID, tenant: TenantUpdate) -> ServiceResult:
+    async def update_tenant(self, tenant_id: uuid.UUID, tenant_update_data: TenantUpdate) -> ServiceResult:
         """
         Update an existing tenant.
         """
@@ -125,16 +100,23 @@ class TenantService:
                     success=False,
                     error=f"Tenant with ID '{tenant_id}' not found."
                 )
-          
-            
-            updated_tenant = await self.repo.update_tenant(tenant)
 
-            if not updated_tenant:
-                return ServiceResult(
-                    success=False,
-                    error=f"Tenant with ID '{tenant_id}' not found."
-                )  
-                      
+            if tenant_update_data.name and tenant_update_data.name != tenant.name:
+                existing = await self.repo.get_by_name(tenant_update_data.name)
+                if existing:
+                    return ServiceResult(
+                        success=False,
+                        error=f"Tenant with name '{tenant_update_data.name}' already exists."
+                    )
+                tenant.name = tenant_update_data.name or tenant.name
+
+            for field, value in tenant_update_data.model_dump(exclude_unset=True).items():
+                value = getattr(tenant_update_data, field, None)
+                if value is not None and value != "":
+                    setattr(tenant, field, value)
+
+            updated_tenant = await self.repo.save(tenant)
+            logger.info(f"Tenant '{updated_tenant.name}' updated successfully.")
             return ServiceResult(
                 data=TenantResponse.model_validate(updated_tenant),
                 success=True
