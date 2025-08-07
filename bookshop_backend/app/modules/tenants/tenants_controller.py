@@ -10,8 +10,7 @@ router = APIRouter(tags=["Tenants"])
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=TenantResponse)
 async def create_new_tenant(
     tenant: Annotated[TenantCreate, Form(...)],
-    db: SessionDep,
-    
+    db: SessionDep,    
 ):
     """
     Create a new tenant.
@@ -30,50 +29,22 @@ async def create_new_tenant(
 @router.get("/", response_model=List[TenantResponse])
 async def list_tenants(
     db: SessionDep,
-    name: Optional[str] = None
-
+    name: Optional[str] = Query(None, min_length=1, description="Filter tenants by name"),
+    email: Optional[str] = Query(None, min_length=1, description="Filter tenants by email"),
+    created_at: Optional[str] = Query(None, description="Filter tenants by creation date")
 ):
     """
     Retrieve a list of all tenants, with an optional filter by name.
     """
     service = TenantService(db)
     
-    if name:
-        result = await service.search_tenant(name)
-    else:
-        result = await service.get_tenants()
-    
+    result = await service.get_tenants(name=name, email=email, created_at=created_at)
     if not result.success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=result.error
         )
         
-    return result.data
-
-@router.get("/search", response_model=List[TenantResponse])
-async def search_tenants(
-    search_term: Annotated[str, Query(..., min_length=1)],
-    db: SessionDep
-):
-    """
-    Search for tenants by name.
-    """
-    if not search_term:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Search term cannot be empty."
-        )
-    
-    service = TenantService(db)
-    result = await service.search_tenant(search_term)
-    
-    if not result.success:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=result.error
-        )
-    
     return result.data
 
 @router.get("/{tenant_id}", response_model=TenantResponse)
