@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 class Tenant(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(max_length=100, index=True)
+    name: str = Field(max_length=100, index=True, unique=True, nullable=False)
     contact_email: str = Field(max_length=100, index=True)
     contact_phone: Optional[str] = Field(default=None, max_length=15, index=True)
     address: Optional[str] = Field(default=None, max_length=255)
