@@ -2,6 +2,7 @@ import { Book, BarChart3, Package, Users, Settings, FileText, Calculator } from 
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true },
@@ -15,9 +16,15 @@ const navItems = [
 
 export function Navigation() {
   const navigate = useNavigate();
+  const { logOut} = useAuth()
 
   const handleNavigate = (href: string) => {
     navigate(href, { replace: true });
+  }
+
+  const signOut = async () => {
+    await logOut();
+    navigate('/auth/login', { replace: true });
   }
   return (
     <nav className="bg-card border-b border-border shadow-card-soft">
@@ -52,7 +59,11 @@ export function Navigation() {
 
           {/* User Menu */}
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={signOut}
+            >
               Sign Out
             </Button>
           </div>

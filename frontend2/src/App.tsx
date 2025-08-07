@@ -38,7 +38,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/bookshop-admin" element={<BookshopAdmin />} />
-              <Route path="/super-admin" element={<SuperAdmin />} />
+              <Route path="/dashboard/super-admin" element={<SuperAdmin />} />
               <Route path="/auth/login" element={<Login />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
