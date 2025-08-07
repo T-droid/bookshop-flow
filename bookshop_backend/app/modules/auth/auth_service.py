@@ -36,6 +36,7 @@ class AuthService:
     
     async def refresh_access_token(self, refresh_token: str) -> ServiceResult:
         payload = verify_refresh_token(refresh_token)
+        print(f"***** {payload} *****")
         if not payload:
             return ServiceResult(
                 success=False,

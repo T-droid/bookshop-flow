@@ -42,34 +42,42 @@ async def login(
     email = auth_result.data.email
     role = auth_result.data.role
 
+    response = JSONResponse(content={
+        "email": email,
+        "role": role,
+        "name": name,
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "message": "Login successful"})
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
         secure=False,
         samesite="lax",
-        max_age=60 * 60 * 24 * 7
+        max_age=60 * 60 * 24 * 7,
     )
-    return  JSONResponse(content={
-        "email": email,
-        "role": role,
-        "name": name,
-        "access_token": access_token,
-        "token_type": "Bearer",
-        "message": "Login successfull"
-    })
+
+    return response
 
 @router.post("/refresh", status_code=status.HTTP_201_CREATED)
 async def refresh(request: Request, db: SessionDep):
-    service = AuthService(db)
     refresh_token = request.cookies.get("refresh_token")
-        
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing refresh token"
+        )
+
+    service = AuthService(db)
     payload = await service.refresh_access_token(refresh_token)
+
     if payload.error:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=payload.error
-            )
+        )
 
     return JSONResponse(content={
         "access_token": payload.data["access_token"],
