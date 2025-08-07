@@ -1,5 +1,5 @@
-from sqlmodel import SQLModel
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlmodel import SQLModel, Session
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
@@ -23,7 +23,7 @@ if DATABASE_URL and not DATABASE_URL.startswith("postgresql+asyncpg://"):
 try:
     async_engine = create_async_engine(
         DATABASE_URL,
-        echo=True,  # False in production
+        echo=False,  # False in production
         pool_pre_ping=True,
         pool_recycle=300,
         # SSL settings for Neon (alternative approach)
@@ -41,7 +41,7 @@ except Exception as e:
 # Create a sessionmaker that will produce AsyncSession objects
 async_session_maker = sessionmaker(
     async_engine,
-    class_=AsyncSession,
+    class_=Session,
     expire_on_commit=False
 )
 
