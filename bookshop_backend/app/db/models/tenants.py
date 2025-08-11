@@ -23,18 +23,19 @@ if TYPE_CHECKING:
 
 
 class Tenant(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
-    name: str = Field(max_length=100, index=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(max_length=100, index=True, unique=True, nullable=False)
     contact_email: str = Field(max_length=100, index=True)
     contact_phone: Optional[str] = Field(default=None, max_length=15, index=True)
     address: Optional[str] = Field(default=None, max_length=255)
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
-    # Relationships
-    publishers: List["Publisher"] = Relationship(back_populates="tenants", link_model=TenantPublisher)
+    publishers: List["Publisher"] = Relationship(back_populates="tenants", link_model=TenantPublisher,  sa_relationship_kwargs={"lazy": "selectin"})
+    tenant_publishers: List["TenantPublisher"] = Relationship(back_populates="tenant")
     users: List["User"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"})
-    suppliers: List["Supplier"] = Relationship(back_populates="tenants", link_model=TenantSupplier)
+    suppliers: List["Supplier"] = Relationship(back_populates="tenants",link_model=TenantSupplier, sa_relationship_kwargs={"viewonly": True})
+    tenant_suppliers: List["TenantSupplier"] = Relationship(back_populates="tenant")    
     books: List["Book"] = Relationship(back_populates="tenant")
     inventory: List["Inventory"] = Relationship(back_populates="tenants")
     sales: List["Sales"] = Relationship(back_populates="tenant")

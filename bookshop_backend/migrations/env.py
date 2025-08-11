@@ -1,12 +1,12 @@
 from logging.config import fileConfig
-from pathlib import Path
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
+import os
+from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
-
 from alembic import context
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Import all models to ensure they're registered with SQLModel
 from app.db.models import *
@@ -15,8 +15,14 @@ from app.db.models import *
 # access to the values within the .ini file in use.
 config = context.config
 
-DB_PATH = str((Path(__file__).parent.parent / "bookshops.db").resolve())
-config.set_main_option("sqlalchemy.url", f"sqlite:///{DB_PATH}")
+# Get database URL from environment or fallback to config
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL and not DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+
+if DATABASE_URL:
+    config.set_main_option("sqlalchemy.url", DATABASE_URL)
+
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -52,7 +58,8 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True
+        compare_type=True,
+        compare_server_default=True,
     )
 
     with context.begin_transaction():
@@ -74,9 +81,10 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, 
+            connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True
+            compare_type=True,
+            compare_server_default=True,
         )
 
         with context.begin_transaction():

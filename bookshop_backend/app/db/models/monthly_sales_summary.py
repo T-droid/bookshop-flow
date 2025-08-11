@@ -1,7 +1,10 @@
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 import uuid
+from typing import TYPE_CHECKING
 
+from .tenants import Tenant
+from .books import Book
 
 class MonthlySalesSummary(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(primary_key=True, foreign_key="tenant.id", nullable=False, ondelete="CASCADE")

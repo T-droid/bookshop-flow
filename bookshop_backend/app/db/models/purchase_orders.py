@@ -1,8 +1,13 @@
 from sqlmodel import Field, SQLModel, Relationship
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import uuid
 
+if TYPE_CHECKING:
+    from .tenants import Tenant
+    from .suppliers import Supplier
+    from .purchase_order_items import PurchaseOrderItems
+    
 class PurchaseOrder(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")

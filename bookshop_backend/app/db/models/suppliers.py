@@ -19,5 +19,7 @@ class Supplier(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
     # Relationships
-    tenants: List["Tenant"] = Relationship(back_populates="suppliers", link_model=TenantSupplier)
-    purchase_orders: List["PurchaseOrder"] = Relationship(back_populates='supplier')
+    tenants: List["Tenant"] = Relationship(back_populates="suppliers", link_model=TenantSupplier, sa_relationship_kwargs={"viewonly": True})
+    supplier_tenants: List["TenantSupplier"] = Relationship(back_populates="supplier")
+    purchase_orders: List["PurchaseOrder"] = Relationship(back_populates="supplier")
+
