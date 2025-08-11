@@ -33,18 +33,18 @@ class Tenant(SQLModel, table=True):
 
     publishers: List["Publisher"] = Relationship(back_populates="tenants", link_model=TenantPublisher,  sa_relationship_kwargs={"lazy": "selectin"})
     tenant_publishers: List["TenantPublisher"] = Relationship(back_populates="tenant")
-    users: List["User"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"})
+    users: List["User"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True, passive_deletes=True)
     suppliers: List["Supplier"] = Relationship(back_populates="tenants",link_model=TenantSupplier, sa_relationship_kwargs={"viewonly": True})
     tenant_suppliers: List["TenantSupplier"] = Relationship(back_populates="tenant")    
-    books: List["Book"] = Relationship(back_populates="tenant")
-    inventory: List["Inventory"] = Relationship(back_populates="tenants")
-    sales: List["Sales"] = Relationship(back_populates="tenant")
-    purchase_orders: List["PurchaseOrder"] = Relationship(back_populates="tenant")
-    settings: "Settings" = Relationship(back_populates="tenant")
-    receipt_templates: List["ReceiptTemplates"] = Relationship(back_populates="tenant")
-    monthly_sales_summaries: List["MonthlySalesSummary"] = Relationship(back_populates="tenant")
-    tax_rates: List["TaxRates"] = Relationship(back_populates="tenant")
-    audit_logs: List["AuditLog"] = Relationship(back_populates="tenant")
+    books: List["Book"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True, passive_deletes=True)
+    inventory: List["Inventory"] = Relationship(back_populates="tenants", cascade_delete=True, passive_deletes=True)
+    sales: List["Sales"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    purchase_orders: List["PurchaseOrder"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    settings: "Settings" = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    receipt_templates: List["ReceiptTemplates"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    monthly_sales_summaries: List["MonthlySalesSummary"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    tax_rates: List["TaxRates"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    audit_logs: List["AuditLog"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
 
     def __repr__(self):
         return f"Tenant(id={self.id}, name={self.name}, contact_email={self.contact_email})"

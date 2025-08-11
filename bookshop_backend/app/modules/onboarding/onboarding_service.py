@@ -61,6 +61,26 @@ class OnboardingService:
                     print(f"Failed to cleanup tenant after error: {cleanup_error}")
             
             return ServiceResult(success=False, error=f"Failed to create tenant: {str(e)}")
+        
+    async def get_tenants(self) -> ServiceResult:
+        """List all tenants."""
+        try:
+            result = await self.tenants_service.get_tenants()
+            if not result.success:
+                return ServiceResult(success=False, error=result.error)
+            return ServiceResult(data=result.data, success=True)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
+        
+    async def get_tenant_by_id(self, tenant_id: str) -> ServiceResult:
+        """Get a tenant by ID."""
+        try:
+            result = await self.tenants_service.get_tenant_by_id(tenant_id)
+            if not result.success:
+                return ServiceResult(success=False, error=result.error)
+            return ServiceResult(data=result.data, success=True)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
             
     async def remove_tenant(self, tenant_id: str) -> ServiceResult:
         """Remove a tenant and its associated users."""

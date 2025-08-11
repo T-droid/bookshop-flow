@@ -28,11 +28,11 @@ class User(UserBase, table=True):
 
     # Relationships
     tenant: Optional['Tenant'] = Relationship(back_populates="users")
-    sales: List["Sales"] = Relationship(back_populates="user")
-    webauthn_credentials: List["WebAuthnCredential"] = Relationship(back_populates="user")
-    otp_codes: List["OtpCode"] = Relationship(back_populates="user")
-    backup_codes: List["BackUpCodes"] = Relationship(back_populates="user")
-    audit_logs: List["AuditLog"] = Relationship(back_populates="user")
+    sales: List["Sales"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
+    webauthn_credentials: List["WebAuthnCredential"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
+    otp_codes: List["OtpCode"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
+    backup_codes: List["BackUpCodes"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
+    audit_logs: List["AuditLog"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
 
     @property
     def role(self) -> str:
