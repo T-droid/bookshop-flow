@@ -2,8 +2,12 @@ from ...db.session import SessionDep
 from .auth_repository import AuthRepository
 from ...utils.result import ServiceResult
 from ...utils.password_manager import hash_password, verify_password
+<<<<<<< HEAD
 from ...utils.tokens import create_access_token, create_refresh_token, verify_refresh_token
 from typing import Dict
+=======
+from .tokens import create_access_token, create_refresh_token, verify_refresh_token
+>>>>>>> 241e3c9d8ffec80c99dab4c32278e8d82d668750
 
 class AuthService:
     def __init__(self, db: SessionDep):

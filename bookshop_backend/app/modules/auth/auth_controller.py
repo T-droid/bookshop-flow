@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Body, Response, Request, Depends, Query
 from fastapi.responses import JSONResponse
-from ...utils.tokens import create_access_token, create_refresh_token, verify_refresh_token
+from .tokens import create_access_token, create_refresh_token, verify_refresh_token
+from .auth_service import authenticate_user
 from pydantic import BaseModel
 from typing import Annotated
-from ...db.session import SessionDep
-from .auth_service import AuthService
 
 
 router = APIRouter()
@@ -34,19 +33,9 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
-    access_token = login_result.data["access_token"]
-    refresh_token = login_result.data["refresh_token"]
-    name = auth_result.data.name
-    email = auth_result.data.email
-    role = auth_result.data.role
+    access_token = create_access_token(user)
+    refresh_token = create_refresh_token(user)
 
-    response = JSONResponse(content={
-        "email": email,
-        "role": role,
-        "name": name,
-        "access_token": access_token,
-        "token_type": "Bearer",
-        "message": "Login successful"})
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -55,36 +44,22 @@ async def login(
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
     )
+    return {
+        "email": credentials.email,
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "message": "Login successfull"
+    }
 
-    return response
-
-@router.post("/refresh", status_code=status.HTTP_201_CREATED)
-async def refresh(request: Request, db: SessionDep):
+@router.post("/refresh")
+async def refresh(request: Request):
     refresh_token = request.cookies.get("refresh_token")
-
-    if not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing refresh token"
-        )
-
-    service = AuthService(db)
-    payload = await service.refresh_access_token(refresh_token)
-
-    if payload.error:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=payload.error
-        )
-
-    return JSONResponse(content={
-        "access_token": payload.data["access_token"],
-        "token_type": payload.data["token_type"]
-    })
-
-
-@router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(request: Request):
-    response = JSONResponse(content={"message": "Logout successful"})
-    response.delete_cookie("refresh_token")
-    return response
+    if refresh_token is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Refresh token missing")
+    
+    payload = verify_refresh_token(refresh_token)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid refresh token")
+    
+    new_access_token = create_access_token(payload)
+    return { "access_token": new_access_token, "token_type": "bearer"}
