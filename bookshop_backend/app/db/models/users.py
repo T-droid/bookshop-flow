@@ -13,16 +13,15 @@ if TYPE_CHECKING:
     from .audit_logs import AuditLog
 
 class User(UserBase, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
-    username: str = Field(max_length=50, index=True, nullable=False, unique=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     email: str = Field(max_length=100, index=True, nullable=False, unique=True)
+    phone_number: str = Field(default=None, max_length=15, nullable=False)
     password: str = Field(max_length=255)
-    first_name: Optional[str] = Field(default=None, max_length=50)
-    last_name: Optional[str] = Field(default=None, max_length=50)
+    full_name: Optional[str] = Field(default=None, max_length=50)
     totp_secret: Optional[str] = Field(default=None, max_length=255)
     totp_enabled: bool = Field(default=False)
     last_login: Optional[datetime] = Field(default=None, index=True)
-    tenant_id: Optional[uuid.UUID] = Field(default=None, foreign_key="tenant.id", ondelete='CASCADE')
+    tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete='CASCADE', nullable=False)
     user_role: str = Field(default="manager", nullable=False)  # 'admin' or 'manager'
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .books import Book
 
 class Publisher(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(max_length=100, index=True, unique=True, nullable=False)
     contact_info: Optional[str] = Field(default=None, max_length=255)
     created_at: datetime = Field(default_factory=datetime.now, index=True)

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 class AuditLog(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
     
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", nullable=False, ondelete="CASCADE")
     user_id: Optional[uuid.UUID] = Field(foreign_key="user.id", nullable=True, ondelete="SET NULL")
     table_name: str = Field(max_length=100, nullable=False)

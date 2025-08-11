@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .purchase_orders import PurchaseOrder
 
 class Supplier(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
     name: str = Field(max_length=100, index=True, unique=True, nullable=False)
     contact_info: Optional[str] = Field(default=None, max_length=255)

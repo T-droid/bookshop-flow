@@ -86,7 +86,7 @@ async def refresh(request: Request, db: SessionDep):
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(request: Request):
+async def logout(response: Response):
     response = JSONResponse(content={"message": "Logout successful"})
     response.delete_cookie("refresh_token")
     return response

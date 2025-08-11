@@ -10,7 +10,7 @@ if TYPE_CHECKING:
      from .sale_items import SaleItems
 
 class Sales(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
     user_id: uuid.UUID = Field(foreign_key="user.id")
     sale_date: datetime = Field(default_factory=datetime.now)
