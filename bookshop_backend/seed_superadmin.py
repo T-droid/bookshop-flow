@@ -26,9 +26,9 @@ async def seed_superadmin():
     """Seed the superadmin user"""
     
     # Get superadmin credentials from environment
-    SUPERADMIN_NAME = os.getenv("SUPERADMIN_NAME", "Super Admin")
-    SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL", "admin@bookshop.com")
-    SUPERADMIN_PASSWORD = os.getenv("SUPERADMIN_PASSWORD", "SuperAdmin123!")
+    SUPERADMIN_NAME = os.getenv("SUPERADMIN_NAME")
+    SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL")
+    SUPERADMIN_PASSWORD = os.getenv("SUPERADMIN_PASSWORD")
     
     async with async_session_maker() as db:
         try:
