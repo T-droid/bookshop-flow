@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AddBookModal } from "@/components/AddBookModal";
+import { useState } from "react";
 
 export default function Inventory() {
-  const books = [
+  const [books, setBooks] = useState([
     {
       id: 1,
       title: "To Kill a Mockingbird",
@@ -47,7 +49,7 @@ export default function Inventory() {
       vatRate: 15,
       publisher: "Scribner"
     },
-  ];
+  ]);
 
   const calculatePriceIncl = (priceExcl: number, vatRate: number) => {
     return (priceExcl * (1 + vatRate / 100)).toFixed(2);
@@ -55,6 +57,18 @@ export default function Inventory() {
 
   const calculateTotalValue = (quantity: number, priceExcl: number, vatRate: number) => {
     return (quantity * parseFloat(calculatePriceIncl(priceExcl, vatRate))).toFixed(2);
+  };
+
+  const [isAddBookModalOpen, setIsAddBookModalOpen] = useState(false);
+
+  const handleAddBooks = (newBooks) => {
+    setBooks((prevBooks) => [
+      ...prevBooks,
+      ...newBooks.map((book, index) => ({
+        ...book,
+        id: prevBooks.length + index + 1, // Simple ID generation; replace with a more robust method (e.g., UUID) in production
+      })),
+    ]);
   };
 
   return (
@@ -66,7 +80,7 @@ export default function Inventory() {
             <h1 className="text-3xl font-bold text-foreground">Inventory Management</h1>
             <p className="text-muted-foreground">Manage your book collection and stock levels</p>
           </div>
-          <Button variant="premium" size="lg" className="gap-2">
+          <Button variant="premium" size="lg" className="gap-2" onClick={() => setIsAddBookModalOpen(true)}>
             <Plus className="w-5 h-5" />
             Add New Book
           </Button>
@@ -187,6 +201,11 @@ export default function Inventory() {
           </div>
         </Card>
       </div>
+      <AddBookModal
+        isOpen={isAddBookModalOpen}
+        onClose={() => setIsAddBookModalOpen(false)}
+        onAddBooks={handleAddBooks}
+      />
     </AppLayout>
   );
 }
