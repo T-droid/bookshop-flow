@@ -29,7 +29,7 @@ async def seed_superadmin():
     SUPERADMIN_NAME = os.getenv("SUPERADMIN_NAME")
     SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL")
     SUPERADMIN_PASSWORD = os.getenv("SUPERADMIN_PASSWORD")
-    
+
     async with async_session_maker() as db:
         try:
             # Check if superadmin already exists
@@ -40,12 +40,12 @@ async def seed_superadmin():
             if existing_admin:
                 logger.info(f"✅ SuperAdmin already exists: {SUPERADMIN_EMAIL}")
                 print(f"""
-🎯 SuperAdmin exists:
-Name: {existing_admin.name}
-Email: {existing_admin.email}
-Active: {existing_admin.is_active}
-Created: {existing_admin.created_at}
-""")
+                    🎯 SuperAdmin exists:
+                    Name: {existing_admin.name}
+                    Email: {existing_admin.email}
+                    Active: {existing_admin.is_active}
+                    Created: {existing_admin.created_at}
+                    """)
                 return existing_admin
             
             # Hash the password
@@ -66,18 +66,18 @@ Created: {existing_admin.created_at}
             logger.info(f"✅ SuperAdmin created successfully: {superadmin.email}")
             
             print(f"""
-🎉 SuperAdmin created successfully!
+                🎉 SuperAdmin created successfully!
 
-Login Credentials:
-==================
-Name: {superadmin.name}
-Email: {superadmin.email}
-Password: {SUPERADMIN_PASSWORD}
-Active: {superadmin.is_active}
-Created: {superadmin.created_at}
+                Login Credentials:
+                ==================
+                Name: {superadmin.name}
+                Email: {superadmin.email}
+                Password: {SUPERADMIN_PASSWORD}
+                Active: {superadmin.is_active}
+                Created: {superadmin.created_at}
 
-🔒 Keep these credentials safe!
-""")
+                🔒 Keep these credentials safe!
+                """)
             
             return superadmin
             
