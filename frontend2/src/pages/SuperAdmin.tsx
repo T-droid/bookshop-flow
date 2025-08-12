@@ -7,6 +7,17 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CreateTenantFormValues } from "@/types/tenant";
+
+
+import { SubmitHandler, useForm } from "react-hook-form";
+import { useState, useEffect } from "react";
+import debounce from "lodash.debounce";
+import { useCheckAdminEmail, useCheckTenantName } from "@/hooks/useCheckAvailability";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import apiClient from "@/api/api";
+import { toast } from "sonner";
+
 
 export default function SuperAdmin() {
   const bookshops = [
@@ -44,6 +55,81 @@ export default function SuperAdmin() {
       totalBooks: 456
     }
   ];
+
+  const queryClient = useQueryClient();
+
+  const { mutateAsync: createTenantAndAdmin } = useMutation({
+    mutationFn: async (data: CreateTenantFormValues) => {
+      return await apiClient.post('/onboarding/create-tenant-admin', data);
+    },
+    onSuccess: () => {
+      toast.success("Bookshop and admin account created successfully!");
+      reset();
+      
+      setTriggerTenantCheck(false);
+      setTriggerEmailCheck(false);
+
+      clearErrors();
+      
+      // Switch to bookshops tab to show the new entry
+      // queryClient.invalidateQueries(['bookshops']);
+    },
+    onError: (error) => {
+      toast.error("Failed to create bookshop or admin account. Please try again.");
+      console.error("Error creating tenant:", error);
+    }
+  })
+  const { register, handleSubmit, setError, clearErrors, watch, reset, formState: { errors, isSubmitting } } = useForm<CreateTenantFormValues>();
+  const onSubmit: SubmitHandler<CreateTenantFormValues> = async (data) => {
+    await createTenantAndAdmin(data);
+  }
+
+  const tenantName = watch("tenant.name");
+  const adminEmail = watch("admin.email");
+
+  const [triggerTenantCheck, setTriggerTenantCheck] = useState(false);
+  const [triggerEmailCheck, setTriggerEmailCheck] = useState(false);
+
+  const { data: tenantExists } = useCheckTenantName(tenantName, triggerTenantCheck);
+  const { data: emailExists } = useCheckAdminEmail(adminEmail, triggerEmailCheck);
+
+  // Debounce the tenant check
+  useEffect(() => {
+    const debounced = debounce(() => {
+      if (tenantName?.length > 2) setTriggerTenantCheck(true);
+    }, 500);
+    debounced();
+    return () => debounced.cancel();
+  }, [tenantName]);
+
+  // Debounce the email check
+  useEffect(() => {
+    const debounced = debounce(() => {
+      if (adminEmail?.includes('@')) setTriggerEmailCheck(true);
+    }, 500);
+    debounced();
+    return () => debounced.cancel();
+  }, [adminEmail]);
+
+  // Handle tenant name result
+  useEffect(() => {
+    if (tenantExists) {
+      setError('tenant.name', { type: 'manual', message: 'Tenant name is already taken' });
+    } else {
+      clearErrors('tenant.name');
+    }
+  }, [tenantExists, setError, clearErrors]);
+
+  // Handle email result
+  useEffect(() => {
+    if (emailExists) {
+      setError('admin.email', { type: 'manual', message: 'Email is already in use' });
+    } else {
+      clearErrors('admin.email');
+    }
+  }, [emailExists, setError, clearErrors]);
+
+
 
   return (
     <AppLayout>
@@ -170,128 +256,145 @@ export default function SuperAdmin() {
 
           {/* Create New Bookshop */}
           <TabsContent value="create" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Bookshop Details */}
-              <Card className="p-6 bg-card border border-border shadow-card-soft">
-                <div className="flex items-center gap-2 mb-6">
-                  <Building2 className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold text-foreground">Bookshop Information</h3>
-                </div>
-
-                <form className="space-y-4">
-                  <div>
-                    <Label htmlFor="shopName" className="text-sm font-medium text-foreground">
-                      Bookshop Name
-                    </Label>
-                    <Input 
-                      id="shopName"
-                      placeholder="Enter bookshop name"
-                      className="bg-background mt-1"
-                    />
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Bookshop Details */}
+                <Card className="p-6 bg-card border border-border shadow-card-soft">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Building2 className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-foreground">Bookshop Information</h3>
                   </div>
 
-                  <div>
-                    <Label htmlFor="address" className="text-sm font-medium text-foreground">
-                      Address
-                    </Label>
-                    <Input 
-                      id="address"
-                      placeholder="Enter full address"
-                      className="bg-background mt-1"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div>
-                      <Label htmlFor="phone" className="text-sm font-medium text-foreground">
-                        Phone Number
-                      </Label>
-                      <Input 
-                        id="phone"
-                        placeholder="+1 (555) 123-4567"
-                        className="bg-background mt-1"
-                      />
+                      <Label htmlFor="shopName">Bookshop Name</Label>
+                      <Input {...register("tenant.name", {
+                        required: "Bookshop name is required",
+                        maxLength: { value: 100, message: "Name cannot exceed 100 characters" },
+                        minLength: { value: 3, message: "Name must be at least 3 characters" }
+                      })} id="shopName" placeholder="Enter bookshop name" />
                     </div>
+                    {errors.tenant?.name && (
+                      <p className="text-sm text-red-600">{errors.tenant.name.message}</p>
+                    )}
 
                     <div>
-                      <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                        Contact Email
-                      </Label>
-                      <Input 
-                        id="email"
-                        type="email"
-                        placeholder="contact@bookshop.com"
-                        className="bg-background mt-1"
-                      />
+                      <Label htmlFor="address">Address</Label>
+                      <Input {...register("tenant.address", {
+                        required: "Address is required",
+                        maxLength: { value: 200, message: "Address cannot exceed 200 characters" },
+                        minLength: { value: 5, message: "Address must be at least 5 characters" }
+                      })} id="address" placeholder="Enter full address" />
+                    </div>
+                    {errors.tenant?.address && (
+                      <p className="text-sm text-red-600">{errors.tenant.address.message}</p>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input {...register("tenant.contact_phone", {
+                          required: "Phone number is required",
+                          pattern: {
+                            value: /^\+?[1-9]\d{1,14}$/,
+                            message: "Invalid phone number format"
+                          }
+                        })} id="phone" placeholder="+1 (555) 123-4567" />
+                      </div>
+                      {errors.tenant?.contact_phone && (
+                        <p className="text-sm text-red-600">{errors.tenant.contact_phone.message}</p>
+                      )}
+
+                      <div>
+                        <Label htmlFor="email">Contact Email</Label>
+                        <Input {...register("tenant.contact_email", {
+                          required: "Email is required",
+                          pattern: {
+                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                            message: "Invalid email format"
+                          }
+                        })} id="email" type="email" placeholder="contact@bookshop.com" />
+                      </div>
+                      {errors.tenant?.contact_email && (
+                        <p className="text-sm text-red-600">{errors.tenant.contact_email.message}</p>
+                      )}
                     </div>
                   </div>
-                </form>
-              </Card>
+                </Card>
 
-              {/* Admin Account */}
-              <Card className="p-6 bg-card border border-border shadow-card-soft">
-                <div className="flex items-center gap-2 mb-6">
-                  <Users className="w-5 h-5 text-accent" />
-                  <h3 className="text-lg font-semibold text-foreground">Admin Account</h3>
-                </div>
-
-                <form className="space-y-4">
-                  <div>
-                    <Label htmlFor="adminName" className="text-sm font-medium text-foreground">
-                      Admin Full Name
-                    </Label>
-                    <Input 
-                      id="adminName"
-                      placeholder="Enter admin full name"
-                      className="bg-background mt-1"
-                    />
+                {/* Admin Account */}
+                <Card className="p-6 bg-card border border-border shadow-card-soft">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Users className="w-5 h-5 text-accent" />
+                    <h3 className="text-lg font-semibold text-foreground">Admin Account</h3>
                   </div>
 
-                  <div>
-                    <Label htmlFor="adminEmail" className="text-sm font-medium text-foreground">
-                      Admin Email
-                    </Label>
-                    <Input 
-                      id="adminEmail"
-                      type="email"
-                      placeholder="admin@bookshop.com"
-                      className="bg-background mt-1"
-                    />
-                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="adminName">Admin Full Name</Label>
+                      <Input {...register("admin.full_name", {
+                        required: "Full name is required",
+                        maxLength: { value: 100, message: "Name cannot exceed 100 characters" },
+                        minLength: { value: 3, message: "Name must be at least 3 characters" }
+                      })} id="adminName" placeholder="Enter admin full name" />
+                    </div>
+                    {errors.admin?.full_name && (
+                      <p className="text-sm text-red-600">{errors.admin.full_name.message}</p>
+                    )}
 
-                  <div>
-                    <Label htmlFor="adminPhone" className="text-sm font-medium text-foreground">
-                      Admin Phone
-                    </Label>
-                    <Input 
-                      id="adminPhone"
-                      placeholder="+1 (555) 123-4567"
-                      className="bg-background mt-1"
-                    />
-                  </div>
+                    <div>
+                      <Label htmlFor="adminEmail">Admin Email</Label>
+                      <Input {...register("admin.email", {
+                        required: "Email is required",
+                        pattern: {
+                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                          message: "Invalid email format"
+                        }
+                      })} id="adminEmail" type="email" placeholder="admin@bookshop.com" />
+                    </div>
+                    {errors.admin?.email && (
+                      <p className="text-sm text-red-600">{errors.admin.email.message}</p>
+                    )}
 
-                  <div>
-                    <Label htmlFor="tempPassword" className="text-sm font-medium text-foreground">
-                      Temporary Password
-                    </Label>
-                    <Input 
-                      id="tempPassword"
-                      type="password"
-                      placeholder="Generate secure password"
-                      className="bg-background mt-1"
-                    />
-                  </div>
-                </form>
-              </Card>
-            </div>
+                    <div>
+                      <Label htmlFor="adminPhone">Admin Phone</Label>
+                      <Input {...register("admin.phone_number", {
+                        required: "Phone number is required",
+                        pattern: {
+                          value: /^\+?[1-9]\d{1,14}$/,
+                          message: "Invalid phone number format"
+                        }
+                      })} id="adminPhone" placeholder="+1 (555) 123-4567" />
+                    </div>
+                    {errors.admin?.phone_number && (
+                      <p className="text-sm text-red-600">{errors.admin.phone_number.message}</p>
+                    )}
 
-            <div className="flex justify-end">
-              <Button variant="premium" size="lg" className="gap-2">
-                <Plus className="w-5 h-5" />
-                Create Bookshop & Admin Account
-              </Button>
-            </div>
+                    <div>
+                      <Label htmlFor="tempPassword">Temporary Password</Label>
+                      <Input {...register("admin.password", {
+                        required: "Password is required",
+                        minLength: { value: 8, message: "Password must be at least 8 characters" }
+                      })} id="tempPassword" type="password" placeholder="Generate secure password" />
+                    </div>
+                    {errors.admin?.password && (
+                      <p className="text-sm text-red-600">{errors.admin.password.message}</p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <Button disabled={isSubmitting} type="submit" variant="premium" size="lg" className="gap-2">
+                  <Plus className="w-5 h-5" />
+                  {isSubmitting ? `Creating...` : `Create Bookshop & Admin Account`}
+                </Button>
+              </div>
+            </form>
           </TabsContent>
+
         </Tabs>
       </div>
     </AppLayout>

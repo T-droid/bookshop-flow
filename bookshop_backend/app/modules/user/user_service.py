@@ -32,6 +32,25 @@ class UserService:
             success=True,
             message="User created successfully"
         )
+    async def check_email(self, email: str) -> ServiceResult:
+        """Check if a user exists by email."""
+        try:
+            user = await self.repo.get_user_by_email(email)
+            if user:
+                return ServiceResult(
+                    success=True,
+                    data={ "exists": True }
+                )
+            
+            return ServiceResult(
+                success=True,
+                data={ "exists": False }
+            )
+        except Exception as e:
+            return ServiceResult(
+                success=False,
+                error=f"Failed to retrieve user: {str(e)}"
+            )
     
     async def delete_user(self, user_id: str) -> ServiceResult:
         """Delete a user by ID."""

@@ -88,6 +88,19 @@ class TenantService:
                 success=False,
                 error=f"Failed to fetch tenant: {str(e)}"
             )
+        
+    async def check_tenant_name(self, name: str) -> ServiceResult:
+        """
+        Check if a tenant name is available.
+        """
+        try:
+            exists = await self.repo.get_by_name(name)
+            if exists:
+                return ServiceResult(success=True, data={"exists": True})
+            return ServiceResult(success=True, data={"exists": False})
+        except Exception as e:
+            logger.error(f"Error checking tenant name '{name}': {e}")
+            return ServiceResult(success=False, error=f"Failed to check tenant name: {str(e)}")
 
     async def update_tenant(self, tenant_id: uuid.UUID, tenant_update_data: TenantUpdate) -> ServiceResult:
         """

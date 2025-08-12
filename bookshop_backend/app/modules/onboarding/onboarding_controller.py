@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, Query, Request
 from fastapi.responses import JSONResponse
 from typing import Annotated
 from app.db.session import SessionDep
 from ..tenants.tenants_model import TenantCreate
 from ..user.user_model import UserCreate
 from .onboarding_service import OnboardingService
+from .onboarding_model import TenantCreate as OnboardingTenantCreate
 
 
 router = APIRouter()
@@ -12,13 +13,13 @@ router = APIRouter()
 @router.post('/create-tenant-admin', status_code=status.HTTP_201_CREATED)
 async def create_tenant_admin(
     db: SessionDep,
-    tenant: TenantCreate,
-    user: UserCreate
+    tenantAdmin: OnboardingTenantCreate,
+    request: Request
 ):
     """Create a new tenant with an admin user."""
     service = OnboardingService(db)
-    
-    onboarding_result = await service.create_tenant_with_admin(tenant, user)
+
+    onboarding_result = await service.create_tenant_with_admin(tenantAdmin.tenant, tenantAdmin.admin)
     if not onboarding_result.success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -35,7 +36,7 @@ async def create_tenant_admin(
             "id": str(tenant_data.id),
             "name": tenant_data.name,            
         },
-        "user": {
+        "admin": {
             "email": user_data.email,
             "full_name": user_data.full_name,
             "phone_number": user_data.phone_number,
@@ -68,6 +69,40 @@ async def get_tenant(
     service = OnboardingService(db)
     
     result = await service.get_tenant_by_id(tenant_id)
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result.error
+        )
+    
+    return result.data
+
+@router.get('/check-tenant-name', status_code=status.HTTP_200_OK)
+async def check_tenant_name(
+    name: Annotated[str, Query(min_length=1)],
+    db: SessionDep
+):
+    """Check if a tenant name is available."""
+    service = OnboardingService(db)
+    
+    result = await service.check_tenant_name(name)
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=result.error
+        )
+    
+    return result.data
+
+@router.get('/check-admin-email', status_code=status.HTTP_200_OK)
+async def check_admin_email(
+    email: Annotated[str, Query(min_length=1)],
+    db: SessionDep
+):
+    """Check if an admin email is available."""
+    service = OnboardingService(db)
+    
+    result = await service.check_admin_email(email)
     if not result.success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

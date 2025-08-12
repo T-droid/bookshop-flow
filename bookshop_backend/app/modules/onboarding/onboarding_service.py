@@ -72,6 +72,26 @@ class OnboardingService:
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
         
+    async def check_tenant_name(self, name: str) -> ServiceResult:
+        """Check if a tenant name is available."""
+        try:
+            result = await self.tenants_service.check_tenant_name(name)
+            if not result.success:
+                return ServiceResult(success=False, error=result.error)
+            return ServiceResult(data=result.data, success=True)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
+
+    async def check_admin_email(self, email: str) -> ServiceResult:
+        """Check if an admin email is available."""
+        try:
+            result = await self.user_service.check_email(email)
+            if not result.success:
+                return ServiceResult(success=False, error=result.error)
+            return ServiceResult(data=result.data, success=True)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
+
     async def get_tenant_by_id(self, tenant_id: str) -> ServiceResult:
         """Get a tenant by ID."""
         try:
