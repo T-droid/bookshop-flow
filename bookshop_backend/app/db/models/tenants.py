@@ -31,8 +31,7 @@ class Tenant(SQLModel, table=True):
 
     users: List["User"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True, passive_deletes=True)
     suppliers: List["Supplier"] = Relationship(back_populates="tenants",link_model=TenantSupplier, sa_relationship_kwargs={"viewonly": True})
-    tenant_suppliers: List["TenantSupplier"] = Relationship(back_populates="tenant")    
-    books: List["Book"] = Relationship(back_populates="tenant", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True, passive_deletes=True)
+    tenant_suppliers: List["TenantSupplier"] = Relationship(back_populates="tenant")
     inventory: List["Inventory"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
     sales: List["Sales"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
     purchase_orders: List["PurchaseOrder"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)

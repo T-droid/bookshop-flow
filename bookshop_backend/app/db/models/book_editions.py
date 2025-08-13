@@ -1,18 +1,14 @@
-from sqlmodel import Field, SQLModel, Relationship, Enum as SQLEnum
+from sqlmodel import Field, SQLModel, Relationship
 from typing import Optional, List, TYPE_CHECKING
 import uuid
 from datetime import datetime, date
-from enum import Enum
 
 if TYPE_CHECKING:
     from .books import Book
     from .inventory import Inventory
-
-class BookFormat(str, Enum):
-    HARDCOVER = "Hardcover"
-    PAPERBACK = "Paperback"
-    EBOOK = "eBook"
-    AUDIOBOOK = "Audiobook"
+    from .sale_items import SaleItems
+    from .monthly_sales_summary import MonthlySalesSummary
+    from .purchase_order_items import PurchaseOrderItems
 
 class BookEdition(SQLModel, table=True):
     edition_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -31,6 +27,9 @@ class BookEdition(SQLModel, table=True):
     # Relationships
     book: Optional["Book"] = Relationship(back_populates="editions")
     inventory_records: List["Inventory"] = Relationship(back_populates="edition")
+    sale_items: List["SaleItems"] = Relationship(back_populates="edition")
+    monthly_sales_summaries: List["MonthlySalesSummary"] = Relationship(back_populates="edition")
+    purchase_order_items: List["PurchaseOrderItems"] = Relationship(back_populates="edition")
 
     def __repr__(self):
         return f"BookEdition(id={self.edition_id}, isbn_13={self.isbn_13}, format={self.format})"

@@ -6,7 +6,6 @@ from .base_user import UserBase
 
 if TYPE_CHECKING:
     from .tenants import Tenant
-    from .sales import Sales
     from .webauthn_credentials import WebAuthnCredential
     from .otp_codes import OtpCode
     from .backup_codes import BackUpCodes
@@ -28,7 +27,6 @@ class User(UserBase, table=True):
 
     # Relationships
     tenant: Optional['Tenant'] = Relationship(back_populates="users")
-    sales: List["Sales"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
     webauthn_credentials: List["WebAuthnCredential"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
     otp_codes: List["OtpCode"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
     backup_codes: List["BackUpCodes"] = Relationship(back_populates="user", cascade_delete=True, passive_deletes=True)
