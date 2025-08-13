@@ -1,12 +1,9 @@
-from fastapi import APIRouter, HTTPException, status, Body, Response, Request
+from fastapi import APIRouter, HTTPException, status, Body, Response, Request, Depends, Query
 from fastapi.responses import JSONResponse
-from typing import Annotated
-
-from app.db.session import SessionDep
-
 from .auth_service import AuthService
 from pydantic import BaseModel
-
+from typing import Annotated
+from ...db.session import SessionDep
 
 
 router = APIRouter()
@@ -38,9 +35,10 @@ async def login(
         )
     access_token = login_result.data["access_token"]
     refresh_token = login_result.data["refresh_token"]
-    name = auth_result.data.name
-    email = auth_result.data.email
-    role = auth_result.data.role
+
+    name = login_result.data.name
+    email = login_result.data.email
+    role = login_result.data.role
 
     response = JSONResponse(content={
         "email": email,
@@ -57,7 +55,6 @@ async def login(
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
     )
-
     return response
 
 @router.post("/refresh", status_code=status.HTTP_201_CREATED)
