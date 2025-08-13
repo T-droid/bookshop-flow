@@ -4,10 +4,13 @@ import { AuthContext } from './AuthContext';
 import apiClient from '@/api/api';
 import { setAccessToken, getAccessToken } from '@/api/tokenManager';
 
+import { LoginResponse } from '@/types/user';
+
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const accessTokenRef = useRef<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<LoginResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const location = useLocation();
 
@@ -47,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAccessToken(res.data.access_token);
       accessTokenRef.current = getAccessToken();
       setIsAuthenticated(true);
-      
+      setUser(res.data);
     } catch (err) {
       setAccessToken(null);
       setIsAuthenticated(false);
@@ -63,6 +66,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .then(res => {
         setAccessToken(null);
         setIsAuthenticated(false);
+        setUser(null);
+        accessTokenRef.current = null;
       })
       .catch(err => {
         console.log(err)
@@ -76,6 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider value={{
       isAuthenticated,
       isLoading,
+      user,
       logIn,
       logOut,
       accessTokenRef

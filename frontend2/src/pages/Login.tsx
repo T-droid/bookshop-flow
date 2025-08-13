@@ -7,13 +7,16 @@ import { AxiosError } from 'axios';
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import useRedirect from "@/hooks/useRedirect";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { logIn, isLoading, isAuthenticated } = useAuth();
+  const { logIn, isLoading, isAuthenticated, user } = useAuth();
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+
+  useRedirect(isAuthenticated, user?.role, navigate);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,11 +35,9 @@ export default function Login() {
         setError('Password must be at least 6 characters long');
         return;
       }
-      await logIn(email, password)
-      if (!isAuthenticated) 
-        navigate('/');
-        
-    } catch (err) {      
+      await logIn(email, password);
+
+    } catch (err) {
       const error = err as AxiosError<{ detail?: string }>;
       
       if (error.response?.status === 401) {

@@ -1,24 +1,10 @@
-<<<<<<< HEAD
 from fastapi import FastAPI
-=======
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from fastapi.middleware.cors import CORSMiddleware
-import httpx
-from typing import Annotated
-
->>>>>>> 241e3c9d8ffec80c99dab4c32278e8d82d668750
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.modules.tenants.tenants_controller import router as tenant_router
 from app.modules.auth.auth_controller import router as auth_router
 from .middleware.auth_middleware import AuthMiddleware
 
-<<<<<<< HEAD
-=======
-from app.modules.tenants.tenants_controller import router as tenant_router
-from app.modules.auth.auth_controller import router as auth_router
->>>>>>> 241e3c9d8ffec80c99dab4c32278e8d82d668750
 
 app = FastAPI()
 app.add_middleware(AuthMiddleware)

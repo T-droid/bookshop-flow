@@ -36,6 +36,13 @@ async def login(
     access_token = create_access_token(user)
     refresh_token = create_refresh_token(user)
 
+    response = JSONResponse(content={
+        "email": email,
+        "role": role,
+        "name": name,
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "message": "Login successful"})
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -44,6 +51,7 @@ async def login(
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
     )
+
     return {
         "email": credentials.email,
         "access_token": access_token,
@@ -51,15 +59,36 @@ async def login(
         "message": "Login successfull"
     }
 
-@router.post("/refresh")
-async def refresh(request: Request):
+
+    return response
+
+@router.post("/refresh", status_code=status.HTTP_201_CREATED)
+async def refresh(request: Request, db: SessionDep):
     refresh_token = request.cookies.get("refresh_token")
-    if refresh_token is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Refresh token missing")
-    
-    payload = verify_refresh_token(refresh_token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid refresh token")
-    
-    new_access_token = create_access_token(payload)
-    return { "access_token": new_access_token, "token_type": "bearer"}
+
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing refresh token"
+        )
+
+    service = AuthService(db)
+    payload = await service.refresh_access_token(refresh_token)
+
+    if payload.error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=payload.error
+        )
+
+    return JSONResponse(content={
+        "access_token": payload.data["access_token"],
+        "token_type": payload.data["token_type"]
+    })
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(request: Request):
+    response = JSONResponse(content={"message": "Logout successful"})
+    response.delete_cookie("refresh_token")
+    return response
