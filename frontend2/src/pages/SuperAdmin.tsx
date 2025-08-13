@@ -33,28 +33,7 @@ const schema = z.object({
   admin: z.object({
     email: z.string().email("Invalid email format"),
     full_name: z.string().min(2, "Full name must be at least 2 characters long"),
-    phone_number: z.string().transform((arg, ctx) => {
-    const phone = parsePhoneNumberFromString(arg, {
-      // set this to use a default country when the phone number omits country code
-      defaultCountry: 'KE',
-      
-      // set to false to require that the whole string is exactly a phone number,
-      // otherwise, it will search for a phone number anywhere within the string
-      extract: false,
-    });
-
-    // when it's good
-    if (phone && phone.isValid()) {
-      return phone.number;
-    }
-
-    // when it's not
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Invalid phone number',
-    });
-    return z.NEVER;
-  }),
+    phone_number: z.string().optional(),
     password: z.string().min(6, "Password must be at least 6 characters long")
   })
 });
