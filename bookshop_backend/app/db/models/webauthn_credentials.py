@@ -6,7 +6,7 @@ from typing import Optional, List
 from .users import User
 
 class WebAuthnCredential(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, ondelete="CASCADE")
     credential_id: bytes = Field(nullable=False, unique=True)
     public_key: bytes = Field(nullable=False)

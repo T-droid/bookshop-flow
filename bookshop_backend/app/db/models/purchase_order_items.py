@@ -1,18 +1,19 @@
 from sqlmodel import Field, SQLModel, Relationship
-from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import uuid
+from decimal import Decimal
 
 if TYPE_CHECKING:
     from .purchase_orders import PurchaseOrder
-    from .books import Book
+    from .book_editions import BookEdition
 
 class PurchaseOrderItems(SQLModel, table=True):
-    order_id: uuid.UUID = Field(foreign_key="purchaseorder.id", primary_key=True, ondelete="CASCADE")
-    book_id: uuid.UUID = Field(foreign_key="book.id", primary_key=True)
-    quantity: int = Field(ge=0, default=0)
-    unit_cost: float = Field(nullable=False)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    po_id: uuid.UUID = Field(foreign_key="purchaseorder.id", nullable=False)
+    edition_id: uuid.UUID = Field(foreign_key="bookedition.edition_id", nullable=False)
+    quantity_ordered: int = Field(gt=0, nullable=False)
+    unit_cost: Decimal = Field(max_digits=10, decimal_places=2, gt=0, nullable=False)
 
     # Relationships
     purchase_order: Optional["PurchaseOrder"] = Relationship(back_populates="purchase_order_items")
-    book: Optional["Book"] = Relationship(back_populates="purchase_order_items")
+    edition: Optional["BookEdition"] = Relationship(back_populates="purchase_order_items")

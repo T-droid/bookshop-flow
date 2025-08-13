@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from .users import User
 
 class OtpCode(SQLModel, table=True):
-    id: uuid.UUID = Field(default=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", nullable=False, ondelete="CASCADE")
     otp: str = Field(max_length=10, nullable=False)
     created_at: datetime = Field(default_factory=datetime.now, index=True)

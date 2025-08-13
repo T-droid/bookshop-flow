@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Body, Response, Request, Depends, Query
 from fastapi.responses import JSONResponse
-from .tokens import create_access_token, create_refresh_token, verify_refresh_token
-from .auth_service import authenticate_user
+from .auth_service import AuthService
 from pydantic import BaseModel
 from typing import Annotated
+from ...db.session import SessionDep
 
 
 router = APIRouter()
@@ -33,8 +33,12 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
-    access_token = create_access_token(user)
-    refresh_token = create_refresh_token(user)
+    access_token = login_result.data["access_token"]
+    refresh_token = login_result.data["refresh_token"]
+
+    name = login_result.data.name
+    email = login_result.data.email
+    role = login_result.data.role
 
     response = JSONResponse(content={
         "email": email,
@@ -51,15 +55,6 @@ async def login(
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
     )
-
-    return {
-        "email": credentials.email,
-        "access_token": access_token,
-        "token_type": "Bearer",
-        "message": "Login successfull"
-    }
-
-
     return response
 
 @router.post("/refresh", status_code=status.HTTP_201_CREATED)
@@ -88,7 +83,7 @@ async def refresh(request: Request, db: SessionDep):
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(request: Request):
+async def logout(response: Response):
     response = JSONResponse(content={"message": "Logout successful"})
     response.delete_cookie("refresh_token")
     return response
