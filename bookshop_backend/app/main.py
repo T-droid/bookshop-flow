@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.modules.tenants.tenants_controller import router as tenant_router
 from app.modules.auth.auth_controller import router as auth_router
+from .middleware.auth_middleware import AuthMiddleware
+
 
 app = FastAPI()
+app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

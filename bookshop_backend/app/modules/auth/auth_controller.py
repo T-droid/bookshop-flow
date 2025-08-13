@@ -1,12 +1,9 @@
-from fastapi import APIRouter, HTTPException, status, Body, Response, Request
+from fastapi import APIRouter, HTTPException, status, Body, Response, Request, Depends, Query
 from fastapi.responses import JSONResponse
-from typing import Annotated
-
-from app.db.session import SessionDep
-
-from .auth_service import AuthService
+from .tokens import create_access_token, create_refresh_token, verify_refresh_token
+from .auth_service import authenticate_user
 from pydantic import BaseModel
-
+from typing import Annotated
 
 
 router = APIRouter()
@@ -36,11 +33,8 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
-    access_token = login_result.data["access_token"]
-    refresh_token = login_result.data["refresh_token"]
-    name = auth_result.data.name
-    email = auth_result.data.email
-    role = auth_result.data.role
+    access_token = create_access_token(user)
+    refresh_token = create_refresh_token(user)
 
     response = JSONResponse(content={
         "email": email,
@@ -57,6 +51,14 @@ async def login(
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
     )
+
+    return {
+        "email": credentials.email,
+        "access_token": access_token,
+        "token_type": "Bearer",
+        "message": "Login successfull"
+    }
+
 
     return response
 

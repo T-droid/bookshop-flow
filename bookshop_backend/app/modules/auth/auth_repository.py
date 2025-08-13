@@ -21,6 +21,9 @@ class AuthRepository:
         stmt = select(models.SuperAdmin).where(models.SuperAdmin.email == email)
         result = await self.db_session.execute(stmt)
         return result.scalars().first()
-
+    
+    
     async def create_user(self, user_data):
         pass
+
+    
