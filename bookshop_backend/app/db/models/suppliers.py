@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 class Supplier(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
-    name: str = Field(max_length=100, index=True, unique=True, nullable=False)
-    contact_info: Optional[str] = Field(default=None, max_length=255)
+    name: str = Field(max_length=255, index=True, nullable=False)
+    contact_info: Optional[str] = Field(default=None, max_length=500)
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 
@@ -22,4 +22,7 @@ class Supplier(SQLModel, table=True):
     tenants: List["Tenant"] = Relationship(back_populates="suppliers", link_model=TenantSupplier, sa_relationship_kwargs={"viewonly": True})
     supplier_tenants: List["TenantSupplier"] = Relationship(back_populates="supplier")
     purchase_orders: List["PurchaseOrder"] = Relationship(back_populates="supplier")
+
+    def __repr__(self):
+        return f"Supplier(id={self.id}, name={self.name})"
 

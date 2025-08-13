@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreateTenantFormValues } from "@/types/tenant";
+// import { CreateTenantFormValues } from "@/types/tenant";
 
 
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -17,7 +17,49 @@ import { useCheckAdminEmail, useCheckTenantName } from "@/hooks/useCheckAvailabi
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import apiClient from "@/api/api";
 import { toast } from "sonner";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
+import ErrorMessage from "@/components/ValidationInputError";
 
+
+const schema = z.object({
+  tenant: z.object({
+    name: z.string().min(3, "Tenant name must be at least 3 characters long"),
+    contact_email: z.string().email("Invalid email format"),
+    contact_phone: z.string().optional(),
+    address: z.string().optional()
+  }),
+  admin: z.object({
+    email: z.string().email("Invalid email format"),
+    full_name: z.string().min(2, "Full name must be at least 2 characters long"),
+    phone_number: z.string().transform((arg, ctx) => {
+    const phone = parsePhoneNumberFromString(arg, {
+      // set this to use a default country when the phone number omits country code
+      defaultCountry: 'KE',
+      
+      // set to false to require that the whole string is exactly a phone number,
+      // otherwise, it will search for a phone number anywhere within the string
+      extract: false,
+    });
+
+    // when it's good
+    if (phone && phone.isValid()) {
+      return phone.number;
+    }
+
+    // when it's not
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Invalid phone number',
+    });
+    return z.NEVER;
+  }),
+    password: z.string().min(6, "Password must be at least 6 characters long")
+  })
+});
+
+type CreateTenantFormValues = z.infer<typeof schema>;
 
 export default function SuperAdmin() {
   const bookshops = [
@@ -79,7 +121,9 @@ export default function SuperAdmin() {
       console.error("Error creating tenant:", error);
     }
   })
-  const { register, handleSubmit, setError, clearErrors, watch, reset, formState: { errors, isSubmitting } } = useForm<CreateTenantFormValues>();
+  const { register, handleSubmit, setError, clearErrors, watch, reset, formState: { errors, isSubmitting } } = useForm<CreateTenantFormValues>({
+    resolver: zodResolver(schema),
+  });
   const onSubmit: SubmitHandler<CreateTenantFormValues> = async (data) => {
     await createTenantAndAdmin(data);
   }
@@ -270,55 +314,35 @@ export default function SuperAdmin() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="shopName">Bookshop Name</Label>
-                      <Input {...register("tenant.name", {
-                        required: "Bookshop name is required",
-                        maxLength: { value: 100, message: "Name cannot exceed 100 characters" },
-                        minLength: { value: 3, message: "Name must be at least 3 characters" }
-                      })} id="shopName" placeholder="Enter bookshop name" />
+                      <Input {...register("tenant.name")} id="shopName" placeholder="Enter bookshop name" />
                     </div>
                     {errors.tenant?.name && (
-                      <p className="text-sm text-red-600">{errors.tenant.name.message}</p>
+                      <ErrorMessage message={errors.tenant.name.message} />
                     )}
 
                     <div>
                       <Label htmlFor="address">Address</Label>
-                      <Input {...register("tenant.address", {
-                        required: "Address is required",
-                        maxLength: { value: 200, message: "Address cannot exceed 200 characters" },
-                        minLength: { value: 5, message: "Address must be at least 5 characters" }
-                      })} id="address" placeholder="Enter full address" />
+                      <Input {...register("tenant.address")} id="address" placeholder="Enter full address" />
                     </div>
                     {errors.tenant?.address && (
-                      <p className="text-sm text-red-600">{errors.tenant.address.message}</p>
+                      <ErrorMessage message={errors.tenant.address.message} />
                     )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="phone">Phone Number</Label>
-                        <Input {...register("tenant.contact_phone", {
-                          required: "Phone number is required",
-                          pattern: {
-                            value: /^\+?[1-9]\d{1,14}$/,
-                            message: "Invalid phone number format"
-                          }
-                        })} id="phone" placeholder="+1 (555) 123-4567" />
+                        <Input {...register("tenant.contact_phone")} id="phone" placeholder="+1 (555) 123-4567" />
                       </div>
                       {errors.tenant?.contact_phone && (
-                        <p className="text-sm text-red-600">{errors.tenant.contact_phone.message}</p>
+                        <ErrorMessage message={errors.tenant.contact_phone.message} />
                       )}
 
                       <div>
                         <Label htmlFor="email">Contact Email</Label>
-                        <Input {...register("tenant.contact_email", {
-                          required: "Email is required",
-                          pattern: {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: "Invalid email format"
-                          }
-                        })} id="email" type="email" placeholder="contact@bookshop.com" />
+                        <Input {...register("tenant.contact_email")} id="email" type="email" placeholder="contact@bookshop.com" />
                       </div>
                       {errors.tenant?.contact_email && (
-                        <p className="text-sm text-red-600">{errors.tenant.contact_email.message}</p>
+                        <ErrorMessage message={errors.tenant.contact_email.message} />
                       )}
                     </div>
                   </div>
@@ -334,53 +358,34 @@ export default function SuperAdmin() {
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="adminName">Admin Full Name</Label>
-                      <Input {...register("admin.full_name", {
-                        required: "Full name is required",
-                        maxLength: { value: 100, message: "Name cannot exceed 100 characters" },
-                        minLength: { value: 3, message: "Name must be at least 3 characters" }
-                      })} id="adminName" placeholder="Enter admin full name" />
+                      <Input {...register("admin.full_name")} id="adminName" placeholder="Enter admin full name" />
                     </div>
                     {errors.admin?.full_name && (
-                      <p className="text-sm text-red-600">{errors.admin.full_name.message}</p>
+                      <ErrorMessage message={errors.admin.full_name.message} />
                     )}
 
                     <div>
                       <Label htmlFor="adminEmail">Admin Email</Label>
-                      <Input {...register("admin.email", {
-                        required: "Email is required",
-                        pattern: {
-                          value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                          message: "Invalid email format"
-                        }
-                      })} id="adminEmail" type="email" placeholder="admin@bookshop.com" />
+                      <Input {...register("admin.email")} id="adminEmail" type="email" placeholder="admin@bookshop.com" />
                     </div>
                     {errors.admin?.email && (
-                      <p className="text-sm text-red-600">{errors.admin.email.message}</p>
+                      <ErrorMessage message={errors.admin.email.message} />
                     )}
 
                     <div>
                       <Label htmlFor="adminPhone">Admin Phone</Label>
-                      <Input {...register("admin.phone_number", {
-                        required: "Phone number is required",
-                        pattern: {
-                          value: /^\+?[1-9]\d{1,14}$/,
-                          message: "Invalid phone number format"
-                        }
-                      })} id="adminPhone" placeholder="+1 (555) 123-4567" />
+                        <Input {...register("admin.phone_number")} id="adminPhone" placeholder="+1 (555) 123-4567" />
                     </div>
                     {errors.admin?.phone_number && (
-                      <p className="text-sm text-red-600">{errors.admin.phone_number.message}</p>
+                      <ErrorMessage message={errors.admin.phone_number.message} />
                     )}
 
                     <div>
                       <Label htmlFor="tempPassword">Temporary Password</Label>
-                      <Input {...register("admin.password", {
-                        required: "Password is required",
-                        minLength: { value: 8, message: "Password must be at least 8 characters" }
-                      })} id="tempPassword" type="password" placeholder="Generate secure password" />
+                        <Input {...register("admin.password")} id="tempPassword" type="password" placeholder="Generate secure password" />
                     </div>
                     {errors.admin?.password && (
-                      <p className="text-sm text-red-600">{errors.admin.password.message}</p>
+                      <ErrorMessage message={errors.admin.password.message} />
                     )}
                   </div>
                 </Card>

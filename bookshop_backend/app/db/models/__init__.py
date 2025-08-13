@@ -5,18 +5,18 @@ from .base_user import UserBase
 from .superadmins import SuperAdmin
 # Import link/junction tables first
 from .tenant_supplier import TenantSupplier
-from .tenants_publishers import TenantPublisher
 
 # Import base models
 from .tenants import Tenant
 from .users import User
-from .publishers import Publisher
+from .categories import Category
 from .suppliers import Supplier
 
 # Import dependent models
 from .tenant_settings import Settings
 from .tax_rates import TaxRates
 from .books import Book
+from .book_editions import BookEdition
 from .inventory import Inventory
 from .receipt_templates import ReceiptTemplates
 
@@ -38,15 +38,15 @@ from .audit_logs import AuditLog
 __all__ = [
     "UserBase",
     "SuperAdmin",
-    "TenantSupplier", 
-    "TenantPublisher",
+    "TenantSupplier",
     "Tenant",
     "User",
-    "Publisher",
+    "Category",
     "Supplier",
     "Settings",
     "TaxRates",
     "Book",
+    "BookEdition",
     "Inventory",
     "ReceiptTemplates",
     "Sales",
