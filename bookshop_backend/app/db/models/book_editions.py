@@ -13,8 +13,7 @@ if TYPE_CHECKING:
 class BookEdition(SQLModel, table=True):
     edition_id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     book_id: uuid.UUID = Field(foreign_key="book.id", nullable=False)
-    isbn_13: str = Field(max_length=13, index=True, unique=True, nullable=False)
-    isbn_10: Optional[str] = Field(default=None, max_length=10, index=True)
+    isbn_number: str = Field(max_length=13, index=True, unique=True, nullable=False)
     format: str = Field(max_length=50, default="Paperback")  # Hardcover, Paperback, eBook, Audiobook
     edition_number: int = Field(default=1)
     publisher: str = Field(max_length=255, nullable=False)
@@ -32,4 +31,4 @@ class BookEdition(SQLModel, table=True):
     purchase_order_items: List["PurchaseOrderItems"] = Relationship(back_populates="edition")
 
     def __repr__(self):
-        return f"BookEdition(id={self.edition_id}, isbn_13={self.isbn_13}, format={self.format})"
+        return f"BookEdition(id={self.edition_id}, isbn_number={self.isbn_number}, format={self.format})"
