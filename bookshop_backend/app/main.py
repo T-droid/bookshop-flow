@@ -4,11 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.modules.tenants.tenants_controller import router as tenant_router
 from app.modules.auth.auth_controller import router as auth_router
 from app.modules.onboarding.onboarding_controller import router as onboarding_router
+from app.modules.books.book_controller import router as book_router
 
 from .middleware.auth_middleware import AuthMiddleware
 
 app = FastAPI()
-app.add_middleware(AuthMiddleware)
+# app.add_middleware(AuthMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,6 +37,13 @@ app.include_router(
     onboarding_router,
     prefix="/onboarding",
     tags=["Onboarding"],
+    responses={404: {"description": "Not found"}},
+)
+
+app.include_router(
+    book_router,
+    prefix="/books",
+    tags=["Books"],
     responses={404: {"description": "Not found"}},
 )
 

@@ -10,9 +10,10 @@ class BookCreateBase(BaseModel):
     author: str = Field(..., min_length=1, max_length=255, description="Book author")
     description: Optional[str] = Field(None, description="Book description")
     language: str = Field(default="English", max_length=50, description="Book language")
-    # category_id: Optional[uuid.UUID] = Field(None, description="Category ID")
+    category_id: Optional[uuid.UUID] = Field(None, description="Category ID")
 
 class BookEditionCreateBase(BaseModel):
+    book_id: uuid.UUID = Field(None, description="Book ID")
     isbn_number: str = Field(..., min_length=10, max_length=13, description="ISBN number (10 or 13 digits)")
     format: str = Field(default="Paperback", max_length=50, description="Book format")
     edition_number: int = Field(default=1, ge=1, description="Edition number")
@@ -49,7 +50,7 @@ class BookEditionCreate(BaseModel):
     location: Optional[str] = Field(None, max_length=100, description="Storage location (optional)")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "book": {
                     "title": "The Great Gatsby",
@@ -79,17 +80,16 @@ class CSVBookCreate(BaseModel):
     title: str = Field(..., description="Book title")
     author: str = Field(..., description="Book author")
     isbn_number: str = Field(..., description="ISBN number", alias="isbn")
+    edition_number: int = Field(default=1, ge=1, description="Edition number")
     publisher: str = Field(..., description="Publisher name")
     category: str = Field(..., description="Book category")
     format: str = Field(default="Paperback", description="Book format")
     quantity: int = Field(default=0, ge=0, description="Initial quantity")
     cost_price: Decimal = Field(default=0.00, ge=0, description="Cost price", alias="cost")
-    # sale_price: Decimal = Field(default=0.00, ge=0, description="Sale price", alias="price")
     page_count: Optional[int] = Field(None, ge=0, description="Number of pages", alias="pages")
     publication_date: Optional[date] = Field(None, description="Publication date", alias="pub_date")
     language: str = Field(default="English", description="Book language")
     description: Optional[str] = Field(None, description="Book description")
-    location: Optional[str] = Field(None, description="Storage location")
     
     @validator('isbn_number', pre=True)
     def validate_isbn(cls, v):
@@ -111,8 +111,8 @@ class CSVBookCreate(BaseModel):
         return v
 
     class Config:
-        allow_population_by_field_name = True
-        schema_extra = {
+        validate_by_name = True
+        json_schema_extra = {
             "example": {
                 "title": "The Great Gatsby",
                 "author": "F. Scott Fitzgerald",
@@ -121,12 +121,10 @@ class CSVBookCreate(BaseModel):
                 "format": "Paperback",
                 "quantity": 25,
                 "cost": 8.99,
-                "price": 14.99,
                 "pages": 180,
                 "pub_date": "2004-09-30",
                 "language": "English",
                 "description": "A classic American novel",
-                "location": "A1-B2"
             }
         }
 
@@ -145,7 +143,7 @@ class BulkBookCreate(BaseModel):
     books: List[CSVBookCreate] = Field(..., min_items=1, description="List of books from CSV")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "books": [
                     {
@@ -276,7 +274,7 @@ class BulkCreateResult(BaseModel):
     created_books: List[BookEditionInventoryResponse] = []
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "success_count": 8,
                 "error_count": 2,
@@ -330,7 +328,7 @@ class QuickBookAdd(BaseModel):
     format: str = Field(default="Paperback")
     
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "title": "Quick Book",
                 "author": "Quick Author",
