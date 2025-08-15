@@ -1,7 +1,7 @@
 """update_user_table_add_role_property_and_full_name
 
 Revision ID: 37bddc6f271a
-Revises: ecac78ad9b28
+Revises: eca56c42d029
 Create Date: 2025-08-11 12:46:01.135813
 
 """
@@ -14,7 +14,7 @@ import sqlmodel
 
 # revision identifiers, used by Alembic.
 revision: str = '37bddc6f271a'
-down_revision: Union[str, Sequence[str], None] = 'ecac78ad9b28'
+down_revision: Union[str, Sequence[str], None] = 'eca56c42d029'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
