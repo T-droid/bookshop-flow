@@ -9,69 +9,91 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 
+import { useMutation } from "@tanstack/react-query";
+import apiClient from "@/api/api";
+import { toast } from "sonner";
+
 interface Book {
-  book_id: number;
   title: string;
   author: string;
   isbn: string;
-  grade: string;
-  subject: string;
-  quantity: number;
-  threshold: number;
-  price_excl: number;
-  vat_rate: number;
   publisher: string;
+  category: string;
+  format: string;
+  quantity: number;
+  cost: number;
+  pages?: number;
+  pub_date?: string;
+  language: string;
+  description?: string;
+  location?: string;
 }
 
 export default function Inventory() {
+  // Updated initial state to match new Book interface
   const [books, setBooks] = useState<Book[]>([
     {
-      book_id: 1,
       title: "To Kill a Mockingbird",
       author: "Harper Lee",
       isbn: "978-0-06-112008-4",
-      grade: "High School",
-      subject: "Literature",
+      publisher: "HarperCollins",
+      category: "Literature",
+      format: "Paperback",
       quantity: 2,
-      threshold: 5,
-      price_excl: 12.99,
-      vat_rate: 15,
-      publisher: "HarperCollins"
+      cost: 12.99,
+      pages: 376,
+      language: "English",
+      description: "A gripping tale of racial injustice and childhood innocence."
     },
     {
-      book_id: 2,
       title: "1984",
       author: "George Orwell",
       isbn: "978-0-452-28423-4",
-      grade: "High School",
-      subject: "Literature",
+      publisher: "Penguin Books",
+      category: "Literature",
+      format: "Paperback",
       quantity: 8,
-      threshold: 3,
-      price_excl: 13.50,
-      vat_rate: 15,
-      publisher: "Penguin Books"
+      cost: 13.50,
+      pages: 328,
+      language: "English",
+      description: "A dystopian social science fiction novel."
     },
     {
-      book_id: 3,
       title: "The Great Gatsby",
       author: "F. Scott Fitzgerald",
       isbn: "978-0-7432-7356-5",
-      grade: "High School",
-      subject: "Literature",
+      publisher: "Scribner",
+      category: "Literature",
+      format: "Paperback",
       quantity: 3,
-      threshold: 8,
-      price_excl: 11.99,
-      vat_rate: 15,
-      publisher: "Scribner"
+      cost: 11.99,
+      pages: 180,
+      language: "English",
+      description: "A classic American novel set in the Jazz Age."
     },
   ]);
+
+  const { mutateAsync: createNewBooks } = useMutation({
+    mutationFn: async (data: Book[]) => {
+      return apiClient.post("/books", data)
+    },
+    onSuccess: () => {
+      toast.success("Books created successfully")
+    },
+    onError: (error) => {
+      toast.error("Failed to create books");
+      setCsvErrors([{ row: 0, message: error.message || 'Unknown error' }]);
+      console.log(error);
+    }
+  })
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [csvData, setCsvData] = useState<Book[]>([]);
   const [csvErrors, setCsvErrors] = useState<{ row: number; message: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { CSVReader } = useCSVReader()
+  const { CSVReader } = useCSVReader();
+
   // Fetch books on mount and after upload
   useEffect(() => {
     fetchBooks();
@@ -80,7 +102,7 @@ export default function Inventory() {
   const fetchBooks = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/tenants/:tenant_id/books?search=${searchQuery}`);
+      const response = await fetch(`/api/books?search=${searchQuery}`);
       const data = await response.json();
       setBooks(data);
     } catch (error) {
@@ -90,54 +112,82 @@ export default function Inventory() {
     }
   };
 
-  const calculatePriceIncl = (priceExcl: number, vatRate: number) => {
-    return (priceExcl * (1 + vatRate / 100)).toFixed(2);
+  // Updated calculation functions to work with new Book interface
+  const calculatePriceIncl = (cost: number, vatRate: number = 15) => {
+    return (cost * (1 + vatRate / 100)).toFixed(2);
   };
 
-  const calculateTotalValue = (quantity: number, priceExcl: number, vatRate: number) => {
-    return (quantity * parseFloat(calculatePriceIncl(priceExcl, vatRate))).toFixed(2);
+  const calculateTotalValue = (quantity: number, cost: number, vatRate: number = 15) => {
+    return (quantity * parseFloat(calculatePriceIncl(cost, vatRate))).toFixed(2);
   };
 
   // Handle CSV upload with react-papaparse
   const handleCsvUpload = (results: any) => {
+    console.log('Raw CSV results:', results); // Log the raw results first
+    
+    // Clear previous errors
+    setCsvErrors([]);
+    
     const data = results.data;
-    const parsedBooks: Book[] = data.map((row: any, index: number) => {
-      const book = {
-        book_id: 0, // Assigned by backend
-        title: row.title?.trim() || "",
-        author: row.author?.trim() || "",
-        isbn: row.isbn?.trim() || "",
-        publisher: row.publisher?.trim() || "",
-        grade: row.grade?.trim() || "",
-        subject: row.subject?.trim() || "",
-        quantity: parseInt(row.quantity) || 0,
-        threshold: parseInt(row.threshold) || 0,
-        price_excl: parseFloat(row.price_excl) || 0,
-        vat_rate: parseFloat(row.vat_rate) || 0,
-      };
+    console.log('CSV data array:', data); // Log the parsed data array
+    
+    if (!data || data.length === 0) {
+      setCsvErrors([{ row: 0, message: "No data found in CSV file" }]);
+      return;
+    }
+    
+    const parsedBooks: Book[] = data
+      .filter((row: any) => {
+        // Filter out completely empty rows
+        return row && Object.values(row).some(value => 
+          value !== null && value !== undefined && String(value).trim() !== ''
+        );
+      })
+      .map((row: any, index: number) => {
+        console.log(`Processing row ${index + 1}:`, row); // Log each row being processed
+        
+        const book: Book = {
+          title: String(row.title || '').trim(),
+          author: String(row.author || '').trim(),
+          isbn: String(row.isbn || '').trim(),
+          publisher: String(row.publisher || '').trim(),
+          category: String(row.subject || row.category || 'General').trim(),
+          format: String(row.format || 'Paperback').trim(),
+          quantity: parseInt(String(row.quantity || '0')) || 0,
+          cost: parseFloat(String(row.price_excl || row.cost || '0')) || 0,
+          pages: row.pages ? parseInt(String(row.pages)) : undefined,
+          pub_date: row.publication_date || row.pub_date || undefined,
+          language: String(row.language || 'English').trim(),
+          description: row.description ? String(row.description).trim() : undefined,
+          location: row.location ? String(row.location).trim() : undefined
+        };
 
-      // Client-side validation
-      const errors: string[] = [];
-      if (!book.title) errors.push("Missing title");
-      if (!book.author) errors.push("Missing author");
-      if (!book.isbn || !/^(?:ISBN(?:-1[03])?:? )?(?=[0-9X]{10}$|(?=(?:[0-9]+[- ]){3})[- 0-9X]{13}$)[0-9]{1,5}[- ]?[0-9]+[- ]?[0-9]+[- ]?[0-9X]$/.test(book.isbn)) errors.push("Invalid ISBN");
-      if (!book.publisher) errors.push("Missing publisher");
-      if (!book.grade) errors.push("Missing grade");
-      if (!book.subject) errors.push("Missing subject");
-      if (book.quantity <= 0) errors.push("Invalid quantity");
-      if (book.threshold < 0) errors.push("Invalid threshold");
-      if (book.price_excl < 0) errors.push("Invalid price");
-      if (book.vat_rate < 0) errors.push("Invalid VAT rate");
+        // Client-side validation
+        const errors: string[] = [];
+        if (!book.title) errors.push("Missing title");
+        if (!book.author) errors.push("Missing author");
+        if (!book.isbn) errors.push("Missing ISBN");
+        if (!book.publisher) errors.push("Missing publisher");
+        if (!book.category || book.category === 'General') errors.push("Missing category");
+        if (!book.format) errors.push("Missing format");
+        if (book.quantity <= 0) errors.push("Invalid quantity");
+        if (book.cost < 0) errors.push("Invalid cost");
 
-      if (errors.length > 0) {
-        setCsvErrors((prev) => [...prev, { row: index + 1, message: errors.join(", ") }]);
-        return null;
-      }
-      return book;
-    }).filter((book): book is Book => book !== null);
+        // Validate ISBN format (simplified)
+        if (book.isbn && !/^[\d\-X]{10,17}$/.test(book.isbn.replace(/\s/g, ''))) {
+          errors.push("Invalid ISBN format");
+        }
 
+        if (errors.length > 0) {
+          setCsvErrors((prev) => [...prev, { row: index + 1, message: errors.join(", ") }]);
+          return null;
+        }
+        return book;
+      })
+      .filter((book): book is Book => book !== null);
+
+    console.log('Parsed books:', parsedBooks); // Log the final parsed books
     setCsvData(parsedBooks);
-    setCsvErrors((prev) => prev.filter((error) => !parsedBooks.some((_, i) => i + 1 === error.row)));
   };
 
   // Submit parsed CSV data to backend
@@ -145,23 +195,33 @@ export default function Inventory() {
     if (csvData.length === 0) return;
     setIsLoading(true);
     try {
-      const response = await fetch("/api/tenants/:tenant_id/books", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(csvData),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        setCsvErrors(errorData.errors || []);
-        return;
-      }
+      console.log('Sending data:', csvData);
+      
+      // const response = await fetch("/api/books", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(csvData),
+      // });
+      
+      // if (!response.ok) {
+      //   const errorData = await response.json();
+      //   console.error('Error response:', errorData);
+      //   setCsvErrors(errorData.errors || [{ row: 0, message: errorData.detail || 'Unknown error' }]);
+      //   return;
+      // }
+      
+      // const result = await response.json();
+      // console.log('Success response:', result);
+
+      await createNewBooks(csvData)
+      
       setIsUploadOpen(false);
       setCsvData([]);
       setCsvErrors([]);
-      await fetchBooks(); // Refresh table
+      await fetchBooks();
     } catch (error) {
       console.error("Failed to upload books:", error);
-      setCsvErrors([{ row: 0, message: "Network error" }]);
+      setCsvErrors([{ row: 0, message: "Network error: " + (error as Error).message }]);
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +282,7 @@ export default function Inventory() {
                     transition={{ delay: 0.4, duration: 0.3 }}
                     className="text-muted-foreground mb-4"
                   >
-                    Upload a CSV file with columns: isbn, title, author, publisher, grade, subject, quantity, threshold, price_excl, vat_rate.{' '}
+                    Upload a CSV file with columns: title, author, isbn, publisher, category (or subject), format, quantity, cost (or price_excl), pages, publication_date, language, description, location.{' '}
                     <a href="/books_template.csv" download className="text-primary underline">
                       Download template
                     </a>
@@ -252,7 +312,7 @@ export default function Inventory() {
                     </CSVReader>
                   </motion.div>
 
-                  {/* Animate data preview */}
+                  {/* Updated preview table to match new Book interface */}
                   <AnimatePresence>
                     {csvData.length > 0 && (
                       <motion.div
@@ -272,12 +332,11 @@ export default function Inventory() {
                                 <th className="text-left p-2 text-sm font-medium text-muted-foreground">Author</th>
                                 <th className="text-left p-2 text-sm font-medium text-muted-foreground">ISBN</th>
                                 <th className="text-left p-2 text-sm font-medium text-muted-foreground">Publisher</th>
-                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Grade</th>
-                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Subject</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Category</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Format</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Cost</th>
                                 <th className="text-left p-2 text-sm font-medium text-muted-foreground">Quantity</th>
-                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Threshold</th>
-                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Price (Excl.)</th>
-                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">VAT %</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Language</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -294,12 +353,11 @@ export default function Inventory() {
                                   <td className="p-2">{book.author}</td>
                                   <td className="p-2">{book.isbn}</td>
                                   <td className="p-2">{book.publisher}</td>
-                                  <td className="p-2">{book.grade}</td>
-                                  <td className="p-2">{book.subject}</td>
+                                  <td className="p-2">{book.category}</td>
+                                  <td className="p-2">{book.format}</td>
+                                  <td className="p-2">${book.cost.toFixed(2)}</td>
                                   <td className="p-2">{book.quantity}</td>
-                                  <td className="p-2">{book.threshold}</td>
-                                  <td className="p-2">${book.price_excl.toFixed(2)}</td>
-                                  <td className="p-2">{book.vat_rate}%</td>
+                                  <td className="p-2">{book.language}</td>
                                 </motion.tr>
                               ))}
                             </tbody>
@@ -309,7 +367,29 @@ export default function Inventory() {
                     )}
                   </AnimatePresence>
 
-                  {/* Animate action buttons */}
+                  {/* Error display */}
+                  <AnimatePresence>
+                    {csvErrors.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="mb-4"
+                      >
+                        <h3 className="text-lg font-semibold text-destructive">Errors</h3>
+                        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                          {csvErrors.map((error, index) => (
+                            <p key={index} className="text-sm text-destructive">
+                              Row {error.row}: {error.message}
+                            </p>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Action buttons */}
                   <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -343,7 +423,7 @@ export default function Inventory() {
           )}
         </AnimatePresence>
 
-        {/* Stats Cards */}
+        {/* Updated Stats Cards to work with new Book interface */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <StatsCard
             title="Total Books"
@@ -357,12 +437,12 @@ export default function Inventory() {
           />
           <StatsCard
             title="Inventory Value"
-            value={`$${books.reduce((sum, book) => sum + parseFloat(calculateTotalValue(book.quantity, book.price_excl, book.vat_rate)), 0).toFixed(2)}`}
+            value={`$${books.reduce((sum, book) => sum + parseFloat(calculateTotalValue(book.quantity, book.cost)), 0).toFixed(2)}`}
             icon={<Package className="w-6 h-6 text-gold" />}
           />
           <StatsCard
             title="Low Stock Items"
-            value={books.filter((book) => book.quantity <= book.threshold).length.toString()}
+            value={books.filter((book) => book.quantity <= 5).length.toString()} // Using 5 as default threshold
             icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
           />
         </div>
@@ -380,14 +460,14 @@ export default function Inventory() {
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline">Grade</Button>
-              <Button variant="outline">Subject</Button>
+              <Button variant="outline">Category</Button>
+              <Button variant="outline">Format</Button>
               <Button variant="outline">Publisher</Button>
             </div>
           </div>
         </Card>
 
-        {/* Books Table */}
+        {/* Updated Books Table to match new Book interface */}
         <Card className="bg-card border border-border shadow-card-soft">
           <div className="p-6">
             <h3 className="text-lg font-semibold text-foreground mb-4">Book Inventory</h3>
@@ -402,25 +482,25 @@ export default function Inventory() {
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">Author</th>
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">ISBN</th>
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">Category</th>
+                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Format</th>
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">Quantity</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Price (Excl.)</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">VAT %</th>
+                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Cost</th>
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">Price (Incl.)</th>
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">Total Value</th>
                       <th className="text-left p-3 text-sm font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {books.map((book) => (
+                    {books.map((book, index) => (
                       <tr
-                        key={book.book_id}
+                        key={`${book.isbn}-${index}`}
                         className={`border-b border-border hover:bg-muted/50 transition-colors ${
-                          book.quantity <= book.threshold ? "bg-destructive/5" : ""
+                          book.quantity <= 5 ? "bg-destructive/5" : "" // Using 5 as default threshold
                         }`}
                       >
                         <td className="p-3">
                           <div className="flex items-center gap-2">
-                            {book.quantity <= book.threshold && (
+                            {book.quantity <= 5 && (
                               <AlertTriangle className="w-4 h-4 text-destructive" />
                             )}
                             <span className="font-medium text-foreground">{book.title}</span>
@@ -429,24 +509,23 @@ export default function Inventory() {
                         <td className="p-3 text-foreground">{book.author}</td>
                         <td className="p-3 text-muted-foreground font-mono text-sm">{book.isbn}</td>
                         <td className="p-3">
-                          <div className="flex gap-1">
-                            <Badge variant="secondary">{book.grade}</Badge>
-                            <Badge variant="outline">{book.subject}</Badge>
-                          </div>
+                          <Badge variant="secondary">{book.category}</Badge>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="outline">{book.format}</Badge>
                         </td>
                         <td className="p-3">
                           <span
                             className={`font-medium ${
-                              book.quantity <= book.threshold ? "text-destructive" : "text-foreground"
+                              book.quantity <= 5 ? "text-destructive" : "text-foreground"
                             }`}
                           >
                             {book.quantity}
                           </span>
                         </td>
-                        <td className="p-3 text-foreground">${book.price_excl.toFixed(2)}</td>
-                        <td className="p-3 text-muted-foreground">{book.vat_rate}%</td>
-                        <td className="p-3 text-foreground">${calculatePriceIncl(book.price_excl, book.vat_rate)}</td>
-                        <td className="p-3 font-medium text-foreground">${calculateTotalValue(book.quantity, book.price_excl, book.vat_rate)}</td>
+                        <td className="p-3 text-foreground">${book.cost.toFixed(2)}</td>
+                        <td className="p-3 text-foreground">${calculatePriceIncl(book.cost)}</td>
+                        <td className="p-3 font-medium text-foreground">${calculateTotalValue(book.quantity, book.cost)}</td>
                         <td className="p-3">
                           <div className="flex gap-1">
                             <Button variant="ghost" size="sm">

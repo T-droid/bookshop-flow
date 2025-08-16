@@ -36,9 +36,9 @@ async def login(
     access_token = login_result.data["access_token"]
     refresh_token = login_result.data["refresh_token"]
 
-    name = login_result.data.name
-    email = login_result.data.email
-    role = login_result.data.role
+    name = auth_result.data.name
+    email = auth_result.data.email
+    role = auth_result.data.role
 
     response = JSONResponse(content={
         "email": email,

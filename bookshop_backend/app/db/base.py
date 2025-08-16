@@ -8,7 +8,7 @@ load_dotenv()
 
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-print(f"🔍 DATABASE_URL loaded: {DATABASE_URL[:50]}...")
+# print(f"🔍 DATABASE_URL loaded: {DATABASE_URL[:50]}...")
 
 # Clean up URL for asyncpg - remove unsupported parameters
 if DATABASE_URL and "sslmode=" in DATABASE_URL:
