@@ -10,9 +10,18 @@ import { Separator } from '@/components/ui/separator';
 interface PurchaseOrderDetailsProps {
   poNumber?: string;
   onClose?: () => void;
+  onApprove?: (poNumber: string) => void;
+  onReject?: (poNumber: string) => void;
+  isAdminView?: boolean;
 }
 
-const PurchaseOrderDetails = ({ poNumber = 'A00001', onClose }: PurchaseOrderDetailsProps) => {
+const PurchaseOrderDetails = ({ 
+  poNumber = 'A00001', 
+  onClose, 
+  onApprove, 
+  onReject, 
+  isAdminView = false 
+}: PurchaseOrderDetailsProps) => {
   // Mock data for demo
   const poDetails = {
     poNumber: poNumber,
@@ -37,7 +46,7 @@ const PurchaseOrderDetails = ({ poNumber = 'A00001', onClose }: PurchaseOrderDet
     ],
   };
 
-  const [userRole, setUserRole] = useState<'Manager' | 'Approver'>('Manager');
+  const [userRole, setUserRole] = useState<'Manager' | 'Approver'>(isAdminView ? 'Approver' : 'Manager');
 
   const handleCancel = () => {
     console.log('PO Cancelled:', poDetails.poNumber);
@@ -46,11 +55,13 @@ const PurchaseOrderDetails = ({ poNumber = 'A00001', onClose }: PurchaseOrderDet
 
   const handleApprove = () => {
     console.log('PO Approved:', poDetails.poNumber);
+    onApprove?.(poDetails.poNumber);
     onClose?.();
   };
 
   const handleReject = () => {
     console.log('PO Rejected:', poDetails.poNumber);
+    onReject?.(poDetails.poNumber);
     onClose?.();
   };
 
