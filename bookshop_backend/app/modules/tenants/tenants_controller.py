@@ -4,8 +4,11 @@ import uuid
 from .tenants_model import TenantResponse, TenantCreate, TenantUpdate
 from ...db.session import SessionDep
 from .tenants_service import TenantService
+from . import api_router
 
 router = APIRouter(tags=["Tenants"])
+router.include_router(api_router, prefix="/{tenant_id}", responses={404: {"description": "Not found"}})
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=TenantResponse)
 async def create_new_tenant(
