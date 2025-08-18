@@ -16,6 +16,7 @@ import BookshopAdmin from "./pages/BookshopAdmin";
 import SuperAdmin from "./pages/SuperAdmin";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthProvider";
+import CreatePurchaseOrder from "./pages/CreatePurchaseOrder";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/bookshop-admin" element={<BookshopAdmin />} />
               <Route path="/dashboard/super-admin" element={<SuperAdmin />} />
               <Route path="/auth/login" element={<Login />} />
+              <Route path="/create-purchase-order" element={<CreatePurchaseOrder />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
