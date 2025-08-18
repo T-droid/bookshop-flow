@@ -1,4 +1,4 @@
-import { Book, BarChart3, Package, Users, Settings, FileText, Calculator } from "lucide-react";
+import { Book, BarChart3, Package, Users, Settings, FileText, Calculator, Shield, Receipt, Boxes } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +6,9 @@ import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true },
-  { icon: Package, label: "Inventory", href: "/inventory" },
+  { icon: Boxes, label: "Stock Management", href: "/inventory-management" },
+  { icon: Receipt, label: "Purchase Orders", href: "/create-purchase-order" },
+  { icon: Shield, label: "Admin", href: "/admin-dashboard" },
   { icon: Users, label: "Publishers", href: "/publishers" },
   { icon: FileText, label: "Sales", href: "/sales" },
   { icon: BarChart3, label: "Reports", href: "/reports" },

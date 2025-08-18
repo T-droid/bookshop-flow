@@ -1,0 +1,690 @@
+import React, { useState } from 'react';
+import { 
+  BarChart3, 
+  TrendingUp, 
+  Users, 
+  ShoppingCart, 
+  Receipt, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  AlertTriangle,
+  DollarSign,
+  Package,
+  Eye,
+  Download,
+  Filter,
+  Calendar,
+  Search
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AppLayout } from '@/components/AppLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
+import { useNotifications } from '@/components/NotificationProvider';
+
+interface PendingPO {
+  id: string;
+  poNumber: string;
+  supplier: string;
+  totalAmount: number;
+  totalItems: number;
+  createdDate: string;
+  requestedBy: string;
+  priority: 'High' | 'Medium' | 'Low';
+}
+
+interface SalesData {
+  id: string;
+  date: string;
+  customer: string;
+  items: number;
+  amount: number;
+  paymentMethod: 'Cash' | 'Card' | 'Mobile Money';
+  status: 'Completed' | 'Pending' | 'Refunded';
+}
+
+interface AnalyticsData {
+  totalSales: number;
+  totalOrders: number;
+  avgOrderValue: number;
+  topBooks: Array<{ title: string; sales: number; revenue: number }>;
+  monthlySales: Array<{ month: string; amount: number }>;
+}
+
+const AdminDashboard = () => {
+  const { addNotification } = useNotifications();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [selectedPO, setSelectedPO] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState('30days');
+
+  // Mock data for pending purchase orders
+  const [pendingPOs, setPendingPOs] = useState<PendingPO[]>([
+    {
+      id: '1',
+      poNumber: 'A00001',
+      supplier: 'Penguin Random House',
+      totalAmount: 30300,
+      totalItems: 23,
+      createdDate: 'Aug 17, 2025',
+      requestedBy: 'John Manager',
+      priority: 'High'
+    },
+    {
+      id: '2',
+      poNumber: 'A00004',
+      supplier: 'Scholastic Inc.',
+      totalAmount: 52100,
+      totalItems: 42,
+      createdDate: 'Aug 16, 2025',
+      requestedBy: 'Sarah Store',
+      priority: 'Medium'
+    },
+    {
+      id: '3',
+      poNumber: 'A00005',
+      supplier: 'Oxford University Press',
+      totalAmount: 18750,
+      totalItems: 15,
+      createdDate: 'Aug 15, 2025',
+      requestedBy: 'Mike Branch',
+      priority: 'Low'
+    }
+  ]);
+
+  // Mock sales data
+  const [salesData] = useState<SalesData[]>([
+    {
+      id: '1',
+      date: 'Aug 18, 2025',
+      customer: 'Alice Johnson',
+      items: 3,
+      amount: 2850,
+      paymentMethod: 'Card',
+      status: 'Completed'
+    },
+    {
+      id: '2',
+      date: 'Aug 18, 2025',
+      customer: 'Bob Smith',
+      items: 1,
+      amount: 1200,
+      paymentMethod: 'Cash',
+      status: 'Completed'
+    },
+    {
+      id: '3',
+      date: 'Aug 17, 2025',
+      customer: 'Carol Wilson',
+      items: 5,
+      amount: 4750,
+      paymentMethod: 'Mobile Money',
+      status: 'Completed'
+    },
+    {
+      id: '4',
+      date: 'Aug 17, 2025',
+      customer: 'David Brown',
+      items: 2,
+      amount: 1850,
+      paymentMethod: 'Card',
+      status: 'Pending'
+    }
+  ]);
+
+  // Mock analytics data
+  const [analytics] = useState<AnalyticsData>({
+    totalSales: 847500,
+    totalOrders: 234,
+    avgOrderValue: 3620,
+    topBooks: [
+      { title: 'The Great Gatsby', sales: 45, revenue: 67500 },
+      { title: 'To Kill a Mockingbird', sales: 38, revenue: 57000 },
+      { title: '1984', sales: 42, revenue: 63000 },
+      { title: 'Pride and Prejudice', sales: 35, revenue: 52500 },
+      { title: 'The Catcher in the Rye', sales: 33, revenue: 49500 }
+    ],
+    monthlySales: [
+      { month: 'Feb', amount: 145000 },
+      { month: 'Mar', amount: 162000 },
+      { month: 'Apr', amount: 178000 },
+      { month: 'May', amount: 195000 },
+      { month: 'Jun', amount: 168000 },
+      { month: 'Jul', amount: 182000 },
+      { month: 'Aug', amount: 210000 }
+    ]
+  });
+
+  const handleApprovePO = (poId: string) => {
+    const po = pendingPOs.find(p => p.id === poId);
+    setPendingPOs(pendingPOs.filter(po => po.id !== poId));
+    // In real app, make API call to approve PO
+    console.log('Approved PO:', poId);
+    // Show success notification
+    addNotification({
+      type: 'success',
+      title: 'Purchase Order Approved',
+      message: `PO ${po?.poNumber} has been approved successfully.`,
+      duration: 4000
+    });
+  };
+
+  const handleRejectPO = (poId: string) => {
+    const po = pendingPOs.find(p => p.id === poId);
+    setPendingPOs(pendingPOs.filter(po => po.id !== poId));
+    // In real app, make API call to reject PO
+    console.log('Rejected PO:', poId);
+    // Show rejection notification
+    addNotification({
+      type: 'error',
+      title: 'Purchase Order Rejected',
+      message: `PO ${po?.poNumber} has been rejected.`,
+      duration: 4000
+    });
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'High':
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">High</Badge>;
+      case 'Medium':
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Medium</Badge>;
+      case 'Low':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Low</Badge>;
+      default:
+        return <Badge variant="outline">{priority}</Badge>;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Completed':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Completed</Badge>;
+      case 'Pending':
+        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Pending</Badge>;
+      case 'Refunded':
+        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Refunded</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const filteredSales = salesData.filter(sale => {
+    const matchesSearch = sale.customer.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || sale.status.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  if (selectedPO) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-6 py-8">
+          <div className="mb-6">
+            <Button 
+              variant="outline" 
+              onClick={() => setSelectedPO(null)}
+              className="mb-4"
+            >
+              ← Back to Admin Dashboard
+            </Button>
+          </div>
+          <PurchaseOrderDetails 
+            poNumber={selectedPO} 
+            onClose={() => setSelectedPO(null)}
+            onApprove={(poNumber) => {
+              handleApprovePO(pendingPOs.find(po => po.poNumber === poNumber)?.id || '');
+              setSelectedPO(null);
+            }}
+            onReject={(poNumber) => {
+              handleRejectPO(pendingPOs.find(po => po.poNumber === poNumber)?.id || '');
+              setSelectedPO(null);
+            }}
+            isAdminView={true}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <div className="container mx-auto px-6 py-8 max-w-7xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 rounded-lg bg-gradient-primary">
+              <BarChart3 className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+              <p className="text-muted-foreground">Manage purchase orders, view sales analytics, and oversee bookshop operations</p>
+            </div>
+          </div>
+        </motion.div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsTrigger value="overview" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="purchase-orders" className="gap-2">
+              <Receipt className="w-4 h-4" />
+              Purchase Orders
+            </TabsTrigger>
+            <TabsTrigger value="sales" className="gap-2">
+              <ShoppingCart className="w-4 h-4" />
+              Sales
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            {/* Key Metrics */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              <Card className="shadow-card-soft border border-border bg-gradient-to-br from-blue-50 to-blue-100">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/20">
+                      <DollarSign className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Sales</p>
+                      <p className="text-2xl font-bold text-foreground">Ksh {analytics.totalSales.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card-soft border border-border bg-gradient-to-br from-green-50 to-green-100">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-green-500/20">
+                      <ShoppingCart className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Orders</p>
+                      <p className="text-2xl font-bold text-foreground">{analytics.totalOrders}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card-soft border border-border bg-gradient-to-br from-purple-50 to-purple-100">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-purple-500/20">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Avg Order Value</p>
+                      <p className="text-2xl font-bold text-foreground">Ksh {analytics.avgOrderValue.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card-soft border border-border bg-gradient-to-br from-amber-50 to-amber-100">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/20">
+                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Pending POs</p>
+                      <p className="text-2xl font-bold text-foreground">{pendingPOs.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Recent Activity */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Pending Purchase Orders */}
+              <Card className="shadow-card-soft border border-border">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Pending Purchase Orders
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {pendingPOs.slice(0, 3).map((po) => (
+                      <div key={po.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div>
+                          <p className="font-medium text-foreground">{po.poNumber}</p>
+                          <p className="text-sm text-muted-foreground">{po.supplier} • Ksh {po.totalAmount.toLocaleString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getPriorityBadge(po.priority)}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedPO(po.poNumber)}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-4"
+                    onClick={() => setActiveTab('purchase-orders')}
+                  >
+                    View All Purchase Orders
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Recent Sales */}
+              <Card className="shadow-card-soft border border-border">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5" />
+                    Recent Sales
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {salesData.slice(0, 3).map((sale) => (
+                      <div key={sale.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                        <div>
+                          <p className="font-medium text-foreground">{sale.customer}</p>
+                          <p className="text-sm text-muted-foreground">{sale.date} • {sale.items} items</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-foreground">Ksh {sale.amount.toLocaleString()}</p>
+                          <p className="text-sm text-muted-foreground">{sale.paymentMethod}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-4"
+                    onClick={() => setActiveTab('sales')}
+                  >
+                    View All Sales
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="purchase-orders" className="space-y-6">
+            {/* Purchase Orders Management */}
+            <Card className="shadow-card-soft border border-border">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold text-foreground">Pending Purchase Orders</CardTitle>
+                  <Badge variant="outline" className="text-sm">
+                    {pendingPOs.length} pending approval{pendingPOs.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-hidden rounded-md border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold text-foreground">PO Number</TableHead>
+                        <TableHead className="font-semibold text-foreground">Supplier</TableHead>
+                        <TableHead className="font-semibold text-foreground">Requested By</TableHead>
+                        <TableHead className="font-semibold text-foreground">Items</TableHead>
+                        <TableHead className="font-semibold text-foreground">Total Amount</TableHead>
+                        <TableHead className="font-semibold text-foreground">Priority</TableHead>
+                        <TableHead className="font-semibold text-foreground">Created</TableHead>
+                        <TableHead className="font-semibold text-foreground w-32">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <AnimatePresence>
+                        {pendingPOs.map((po, index) => (
+                          <motion.tr
+                            key={po.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="border-b border-border hover:bg-muted/30 transition-colors"
+                          >
+                            <TableCell className="font-mono font-medium text-foreground">
+                              {po.poNumber}
+                            </TableCell>
+                            <TableCell className="text-foreground">{po.supplier}</TableCell>
+                            <TableCell className="text-foreground">{po.requestedBy}</TableCell>
+                            <TableCell className="text-center">{po.totalItems}</TableCell>
+                            <TableCell className="font-semibold">Ksh {po.totalAmount.toLocaleString()}</TableCell>
+                            <TableCell>{getPriorityBadge(po.priority)}</TableCell>
+                            <TableCell className="text-muted-foreground">{po.createdDate}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setSelectedPO(po.poNumber)}
+                                  className="h-8 w-8"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleApprovePO(po.id)}
+                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRejectPO(po.id)}
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </TableBody>
+                  </Table>
+                  
+                  {pendingPOs.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No pending purchase orders requiring approval.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="sales" className="space-y-6">
+            {/* Search and Filter */}
+            <Card className="shadow-card-soft border border-border">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by customer name..."
+                      className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full md:w-[200px]">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="refunded">Refunded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={dateRange} onValueChange={setDateRange}>
+                    <SelectTrigger className="w-full md:w-[200px]">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Date range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7days">Last 7 days</SelectItem>
+                      <SelectItem value="30days">Last 30 days</SelectItem>
+                      <SelectItem value="90days">Last 90 days</SelectItem>
+                      <SelectItem value="1year">Last year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Export
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sales Table */}
+            <Card className="shadow-card-soft border border-border">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-semibold text-foreground">Sales Transactions</CardTitle>
+                  <Badge variant="outline" className="text-sm">
+                    {filteredSales.length} transaction{filteredSales.length !== 1 ? 's' : ''}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-hidden rounded-md border border-border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold text-foreground">Date</TableHead>
+                        <TableHead className="font-semibold text-foreground">Customer</TableHead>
+                        <TableHead className="font-semibold text-foreground">Items</TableHead>
+                        <TableHead className="font-semibold text-foreground">Amount</TableHead>
+                        <TableHead className="font-semibold text-foreground">Payment Method</TableHead>
+                        <TableHead className="font-semibold text-foreground">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <AnimatePresence>
+                        {filteredSales.map((sale, index) => (
+                          <motion.tr
+                            key={sale.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="border-b border-border hover:bg-muted/30 transition-colors"
+                          >
+                            <TableCell className="text-muted-foreground">{sale.date}</TableCell>
+                            <TableCell className="font-medium text-foreground">{sale.customer}</TableCell>
+                            <TableCell className="text-center">{sale.items}</TableCell>
+                            <TableCell className="font-semibold">Ksh {sale.amount.toLocaleString()}</TableCell>
+                            <TableCell className="text-foreground">{sale.paymentMethod}</TableCell>
+                            <TableCell>{getStatusBadge(sale.status)}</TableCell>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </TableBody>
+                  </Table>
+                  
+                  {filteredSales.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No sales transactions found matching your criteria.
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            {/* Top Selling Books */}
+            <Card className="shadow-card-soft border border-border">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-foreground">Top Selling Books</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {analytics.topBooks.map((book, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{book.title}</p>
+                          <p className="text-sm text-muted-foreground">{book.sales} copies sold</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-foreground">Ksh {book.revenue.toLocaleString()}</p>
+                        <p className="text-sm text-muted-foreground">Revenue</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Monthly Sales Chart */}
+            <Card className="shadow-card-soft border border-border">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-foreground">Monthly Sales Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 flex items-end justify-between gap-2 p-4 bg-muted/20 rounded-lg">
+                  {analytics.monthlySales.map((month, index) => (
+                    <div key={index} className="flex flex-col items-center gap-2">
+                      <div 
+                        className="bg-gradient-primary rounded-t-md w-12 transition-all duration-500 hover:opacity-80"
+                        style={{ 
+                          height: `${(month.amount / Math.max(...analytics.monthlySales.map(m => m.amount))) * 200}px`,
+                          minHeight: '20px'
+                        }}
+                      />
+                      <div className="text-center">
+                        <p className="text-xs font-medium text-foreground">{month.month}</p>
+                        <p className="text-xs text-muted-foreground">{(month.amount / 1000).toFixed(0)}K</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </AppLayout>
+  );
+};
+
+export default AdminDashboard;
