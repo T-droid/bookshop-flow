@@ -36,18 +36,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import debounce from 'lodash.debounce';
+import { useCheckBookAvailability } from '@/hooks/useCheckAvailability';
+import { FieldError, set, useForm } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
+import { BookData, BookResponse, CartItem } from '@/types/books';
+import { ErrorMessage, SuccessMessage } from '@/components/ValidationInputError';
 
-interface CartItem {
-  id: string;
-  isbn: string;
-  title: string;
-  author: string;
-  quantity: number;
-  unitPrice: number;
-  stockLevel: number;
-  lineDiscount: number;
-  vatRate: number;
-}
+
 
 interface PaymentMethod {
   type: 'cash' | 'card' | 'mpesa';
@@ -99,40 +95,41 @@ export default function Sales() {
   const isbnInputRef = useRef<HTMLInputElement>(null);
 
   // Mock data for available books
-  const [availableBooks] = useState([
-    {
-      isbn: '9780743273565',
-      title: 'The Great Gatsby',
-      author: 'F. Scott Fitzgerald',
-      unitPrice: 1200,
-      stockLevel: 15,
-      vatRate: 16
-    },
-    {
-      isbn: '9780061120084',
-      title: 'To Kill a Mockingbird',
-      author: 'Harper Lee',
-      unitPrice: 1500,
-      stockLevel: 3,
-      vatRate: 16
-    },
-    {
-      isbn: '9780452284234',
-      title: '1984',
-      author: 'George Orwell',
-      unitPrice: 1350,
-      stockLevel: 0,
-      vatRate: 16
-    },
-    {
-      isbn: '9780134685991',
-      title: 'Effective Java',
-      author: 'Joshua Bloch',
-      unitPrice: 4500,
-      stockLevel: 8,
-      vatRate: 16
-    }
-  ]);
+  // const [availableBooks] = useState([
+  //   {
+  //     isbn: '9780743273565',
+  //     title: 'The Great Gatsby',
+  //     author: 'F. Scott Fitzgerald',
+  //     unitPrice: 1200,
+  //     stockLevel: 15,
+  //     vatRate: 16
+  //   },
+  //   {
+  //     isbn: '9780061120084',
+  //     title: 'To Kill a Mockingbird',
+  //     author: 'Harper Lee',
+  //     unitPrice: 1500,
+  //     stockLevel: 3,
+  //     vatRate: 16
+  //   },
+  //   {
+  //     isbn: '9780452284234',
+  //     title: '1984',
+  //     author: 'George Orwell',
+  //     unitPrice: 1350,
+  //     stockLevel: 0,
+  //     vatRate: 16
+  //   },
+  //   {
+  //     isbn: '9780134685991',
+  //     title: 'Effective Java',
+  //     author: 'Joshua Bloch',
+  //     unitPrice: 4500,
+  //     stockLevel: 8,
+  //     vatRate: 16
+  //   }
+  // ]);
+  const [availableBook, setAvailableBook] = useState<BookData | null>(null);
 
   // Update time every second
   useEffect(() => {
@@ -167,14 +164,14 @@ export default function Sales() {
 
   // Calculations
   const subtotal = cartItems.reduce((sum, item) => {
-    const lineTotal = item.quantity * item.unitPrice;
+    const lineTotal = item.quantity * item.price;
     const discountedTotal = lineTotal - item.lineDiscount;
     return sum + discountedTotal;
   }, 0);
 
   const discountedSubtotal = subtotal - cartDiscount;
   const taxAmount = cartItems.reduce((sum, item) => {
-    const lineTotal = (item.quantity * item.unitPrice) - item.lineDiscount;
+    const lineTotal = (item.quantity * item.price) - item.lineDiscount;
     return sum + (lineTotal * item.vatRate) / (100 + item.vatRate);
   }, 0);
   const grandTotal = discountedSubtotal;
@@ -183,55 +180,71 @@ export default function Sales() {
   const remainingBalance = Math.max(0, grandTotal - totalPaid);
 
   // Additional calculations for POS interface
-  const cartSubtotal = cartItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  const cartSubtotal = cartItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
   const cartVAT = cartItems.reduce((sum, item) => {
-    const lineTotal = item.quantity * item.unitPrice;
+    const lineTotal = item.quantity * item.price;
     return sum + (lineTotal * item.vatRate) / 100;
   }, 0);
   const cartTotal = cartSubtotal + cartVAT - cartDiscount;
 
   // Mock books data for search
-  const mockBooks = availableBooks.map(book => ({
-    id: book.isbn,
-    isbn: book.isbn,
-    title: book.title,
-    author: book.author,
-    price: book.unitPrice,
-    stockLevel: book.stockLevel
-  }));
+  // const mockBooks = availableBooks.map(book => ({
+  //   id: book.isbn,
+  //   isbn: book.isbn,
+  //   title: book.title,
+  //   author: book.author,
+  //   price: book.unitPrice,
+  //   stockLevel: book.stockLevel
+  // }));
 
   // Functions
-  const findBookByISBN = (isbn: string) => {
-    return availableBooks.find(book => book.isbn === isbn);
-  };
+  // const findBookByISBN = (isbn: string) => {
+  //   return availableBooks.find(book => book.isbn === isbn);
+  // };
 
   const addItemByISBN = () => {
-    if (!isbnInput.trim()) return;
-    
-    const book = findBookByISBN(isbnInput);
-    if (!book) {
-      setShowSearch(true);
-      return;
-    }
+    if (!availableBook || !availableBook.book_found) return;
 
-    const existingItem = cartItems.find(item => item.isbn === isbnInput);
+    // Check if book is already in cart
+    const existingItem = cartItems.find(item => item.isbn === availableBook.isbn_number);
+
     if (existingItem) {
-      updateQuantity(existingItem.id, existingItem.quantity + 1);
+      // Check if we can add more (don't exceed available quantity)
+      if (existingItem.quantity < availableBook.available_quantity) {
+        updateQuantity(existingItem.id, existingItem.quantity + 1);
+      } else {
+        // Show error - insufficient stock
+        setError('isbn', { 
+          type: 'manual', 
+          message: `Cannot add more - only ${availableBook.available_quantity} in stock` 
+        });
+        return;
+      }
     } else {
+      // Add new item to cart
       const newItem: CartItem = {
         id: Math.random().toString(36).substring(2),
-        isbn: book.isbn,
-        title: book.title,
-        author: book.author,
+        title: availableBook.title,
+        author: availableBook.author,
+        isbn: availableBook.isbn_number,
+        StockLevel: availableBook.available_quantity,
+        price: availableBook.sale_price,
         quantity: 1,
-        unitPrice: book.unitPrice,
-        stockLevel: book.stockLevel,
         lineDiscount: 0,
-        vatRate: book.vatRate
+        vatRate: 16 // Default VAT rate
       };
       setCartItems([...cartItems, newItem]);
     }
-    setIsbnInput('');
+    
+    // Clear the form and reset validation
+    setValue('isbn', '');
+    clearErrors('isbn');
+    setAvailableBook(null);
+    
+    // Focus back to input for next scan
+    if (isbnInputRef.current) {
+      isbnInputRef.current.focus();
+    }
   };
 
   const updateQuantity = (id: string, newQuantity: number) => {
@@ -309,34 +322,102 @@ export default function Sales() {
     setHeldSales(heldSales.filter(sale => sale.id !== saleId));
   };
 
-  const simulateQRPayment = () => {
-    // Simulate successful payment after 3 seconds
-    setTimeout(() => {
-      setQrPayment(prev => ({ ...prev, status: 'success' }));
-      setPayments(prev => [...prev, {
-        type: 'mpesa',
-        amount: qrPayment.amount,
-        reference: `MP${Date.now()}`,
-        status: 'completed'
-      }]);
-    }, 3000);
-  };
+  // const simulateQRPayment = () => {
+  //   // Simulate successful payment after 3 seconds
+  //   setTimeout(() => {
+  //     setQrPayment(prev => ({ ...prev, status: 'success' }));
+  //     setPayments(prev => [...prev, {
+  //       type: 'mpesa',
+  //       amount: qrPayment.amount,
+  //       reference: `MP${Date.now()}`,
+  //       status: 'completed'
+  //     }]);
+  //   }, 3000);
+  // };
 
-  const completeSale = () => {
-    if (remainingBalance > 0) return;
+  // const completeSale = () => {
+  //   if (remainingBalance > 0) return;
     
-    // Simulate sale completion
-    console.log('Sale completed:', {
-      items: cartItems,
-      total: grandTotal,
-      payments: payments,
-      timestamp: new Date()
-    });
+  //   // Simulate sale completion
+  //   console.log('Sale completed:', {
+  //     items: cartItems,
+  //     total: grandTotal,
+  //     payments: payments,
+  //     timestamp: new Date()
+  //   });
     
-    // Show receipt and clear cart
-    alert('Sale completed successfully! Receipt generated.');
-    clearCart();
-  };
+  //   // Show receipt and clear cart
+  //   alert('Sale completed successfully! Receipt generated.');
+  //   clearCart();
+  // };
+
+  const { register, handleSubmit, setValue, setError, clearErrors, watch, formState: { errors } } = useForm()
+
+  const isbnValue = watch('isbn');
+
+  const [triggerBookCheck, setTriggerBookCheck] = useState(false);
+
+  const { data: bookData } = useCheckBookAvailability(isbnValue, triggerBookCheck);
+
+
+  // Update the useEffect for ISBN validation and book checking
+  useEffect(() => {
+    const debounced = debounce(() => {
+      if (isbnValue && isbnValue.length >= 10) {
+        // Clear any existing errors when we start checking
+        clearErrors('isbn');
+        const existingItem = cartItems.find(item => item.isbn === isbnValue);
+        if (existingItem) {
+          setAvailableBook({ ...existingItem, book_found: true, available_quantity: existingItem.StockLevel, isbn_number: existingItem.isbn });
+        }
+        setTriggerBookCheck(true);
+      } else if (isbnValue && isbnValue.length < 10) {
+        // Set validation error for short ISBN
+        setError('isbn', { 
+          type: 'manual', 
+          message: 'ISBN must be at least 10 characters' 
+        });
+        setTriggerBookCheck(false);
+      } else {
+        // Clear errors when input is empty
+        clearErrors('isbn');
+        setTriggerBookCheck(false);
+      }
+    }, 300);
+
+    debounced();
+    
+    return () => {
+      debounced.cancel();
+    };
+  }, [isbnValue, setError, clearErrors]);
+
+  // Update the useEffect for handling book data response
+  useEffect(() => {
+    if (bookData && triggerBookCheck) {
+      setTriggerBookCheck(false);
+      
+      if (bookData.success && bookData.book.book_found) {
+        // Book found - clear any errors and add to cart
+        clearErrors('isbn');
+        setAvailableBook(bookData.book);
+        // addItemByISBN();
+      } else if (bookData.success && !bookData.book.book_found) {
+        // Book not found - show appropriate error
+        setError('isbn', { 
+          type: 'manual', 
+          message: 'Book not found - search catalog?' 
+        });
+      } else if (!bookData.success) {
+        console.log(bookData);
+        // API error - show server error
+        setError('isbn', { 
+          type: 'manual', 
+          message: 'Server error - please try again' 
+        });
+      }
+    }
+  }, [bookData, clearErrors, setError, triggerBookCheck]);
 
   const getStockBadge = (stockLevel: number, quantity: number) => {
     if (stockLevel === 0) {
@@ -436,25 +517,24 @@ export default function Sales() {
                     <div className="flex-1">
                       <Input
                         ref={isbnInputRef}
+                        {...register('isbn')}
                         type="text"
                         placeholder="Enter ISBN or scan barcode..."
-                        value={isbnInput}
-                        onChange={(e) => setIsbnInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addItemByISBN()}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSubmit(addItemByISBN)}
                         className="text-lg"
                       />
                     </div>
                     <Button 
                       variant="accent" 
-                      onClick={addItemByISBN}
-                      disabled={!isbnInput.trim()}
+                      onClick={handleSubmit(addItemByISBN)}
+                      disabled={!isbnValue}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
                     </Button>
                     <Button 
                       variant="outline" 
-                      onClick={() => setIsbnInput('')}
+                      onClick={() => setValue('isbn', '')}
                     >
                       Clear
                     </Button>
@@ -471,8 +551,16 @@ export default function Sales() {
                       <Search className="w-4 h-4" />
                     </Button>
                   </div>
+                  {errors.isbn && (
+                    <ErrorMessage message={errors.isbn.message as FieldError} />
+                  )}
+                  {!errors.isbn && availableBook?.book_found && (
+                    <SuccessMessage message={`Book found: ${availableBook.title}`}>
+                      {getStockBadge(availableBook.available_quantity, 1)}
+                    </SuccessMessage>
+                  )}
                   
-                  {isbnInput && (
+                  {/* {isbnInput && (
                     <div className="mt-3">
                       {findBookByISBN(isbnInput) ? (
                         <div className="flex items-center gap-2">
@@ -487,7 +575,7 @@ export default function Sales() {
                         </div>
                       )}
                     </div>
-                  )}
+                  )} */}
                 </CardContent>
               </Card>
 
@@ -542,7 +630,7 @@ export default function Sales() {
                             <p className="font-medium text-foreground truncate">{item.title}</p>
                             <p className="text-sm text-muted-foreground">{item.author}</p>
                             <p className="text-xs text-muted-foreground font-mono">{item.isbn}</p>
-                            {getStockBadge(item.stockLevel, item.quantity)}
+                            {getStockBadge(item.StockLevel, item.quantity)}
                           </div>
                           
                           <div className="flex items-center gap-2">
@@ -560,16 +648,16 @@ export default function Sales() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              disabled={item.quantity >= item.stockLevel}
+                              disabled={item.quantity >= item.StockLevel}
                             >
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
                           
                           <div className="text-right">
-                            <p className="text-sm text-muted-foreground">@ Ksh {item.unitPrice.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">@ Ksh {item.price.toLocaleString()}</p>
                             <p className="font-semibold text-foreground">
-                              Ksh {(item.quantity * item.unitPrice).toLocaleString()}
+                              Ksh {(item.quantity * item.price).toLocaleString()}
                             </p>
                           </div>
                           
@@ -841,7 +929,7 @@ export default function Sales() {
         </div>
 
         {/* Search Modal */}
-        <Dialog open={showSearch} onOpenChange={setShowSearch}>
+        {/* <Dialog open={showSearch} onOpenChange={setShowSearch}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>Search Books</DialogTitle>
@@ -866,7 +954,7 @@ export default function Sales() {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
 
         {/* Scanner Modal */}
         <Dialog open={showScanner} onOpenChange={setShowScanner}>

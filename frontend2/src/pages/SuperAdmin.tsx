@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
-import ErrorMessage from "@/components/ValidationInputError";
+import { ErrorMessage } from "@/components/ValidationInputError";
 
 
 const schema = z.object({
