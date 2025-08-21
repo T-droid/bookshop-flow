@@ -42,6 +42,9 @@ import { FieldError, set, useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { BookData, BookResponse, CartItem } from '@/types/books';
 import { ErrorMessage, SuccessMessage } from '@/components/ValidationInputError';
+import { salesApi } from '@/api/salesApi';
+import { SalesRequestBody, Customer, Payment, SaleItem } from '@/types/sales';
+import { toast } from 'sonner';
 
 
 
@@ -92,6 +95,7 @@ export default function Sales() {
     amount: 0
   });
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
+  const [isProcessingSale, setIsProcessingSale] = useState(false);
   const isbnInputRef = useRef<HTMLInputElement>(null);
 
   // Mock data for available books
@@ -300,12 +304,65 @@ export default function Sales() {
     });
   };
 
-  const processCashPayment = () => {
+  const processCashPayment = async () => {
     if (cashReceived >= cartTotal && cartItems.length > 0) {
-      // Process the payment
-      console.log('Processing cash payment', { total: cartTotal, received: cashReceived, change: cashReceived - cartTotal });
-      // In real implementation, this would generate receipt and update inventory
-      clearCart();
+      setIsProcessingSale(true);
+      
+      try {
+        // Transform cart items to sale items format
+        const saleItems: SaleItem[] = cartItems.map(item => ({
+          // For now using placeholder IDs - in production these should come from the book API
+          edition_id: `edition-${item.id}`,
+          inventory_id: `inventory-${item.id}`,
+          isbn: item.isbn,
+          title: item.title,
+          author: item.author,
+          quantity_sold: item.quantity,
+          price_per_unit: item.price,
+          total_price: item.price * item.quantity,
+          tax_amount: (item.price * item.quantity * (item.vatRate || 16)) / 100,
+          discount_amount: item.lineDiscount || 0
+        }));
+
+        // Prepare customer data
+        const customer: Customer | undefined = customerInfo.name ? {
+          customer_name: customerInfo.name,
+          customer_email: customerInfo.email || undefined,
+          customer_phone: customerInfo.phone || undefined
+        } : undefined;
+
+        // Prepare payment data
+        const payment: Payment = {
+          payment_method: 'cash',
+          amount_received: cashReceived,
+          change_given: Math.max(0, cashReceived - cartTotal)
+        };
+
+        // Prepare sale data
+        const saleData: SalesRequestBody = {
+          customer,
+          sale_items: saleItems,
+          payment,
+          total_amount: cartTotal,
+          sale_status: 'completed'
+        };
+
+        // Create the sale via API
+        const result = await salesApi.createSale(saleData);
+        
+        toast.success(`Sale completed successfully! Sale ID: ${result.sale_id}`);
+        console.log('Sale created:', result);
+        
+        // Clear the cart after successful sale
+        clearCart();
+        setCashReceived(0);
+        
+      } catch (error) {
+        console.error('Error processing sale:', error);
+        toast.error('Failed to process sale. Please try again.');
+      } finally {
+        setIsProcessingSale(false);
+      }
     }
   };
 
@@ -401,7 +458,7 @@ export default function Sales() {
         // Book found - clear any errors and add to cart
         clearErrors('isbn');
         setAvailableBook(bookData.book);
-        // addItemByISBN();
+        addItemByISBN();
       } else if (bookData.success && !bookData.book.book_found) {
         // Book not found - show appropriate error
         setError('isbn', { 
@@ -790,10 +847,19 @@ export default function Sales() {
                         className="w-full" 
                         size="lg"
                         onClick={processCashPayment}
-                        disabled={cartItems.length === 0 || cashReceived < cartTotal}
+                        disabled={cartItems.length === 0 || cashReceived < cartTotal || isProcessingSale}
                       >
-                        <Receipt className="w-4 h-4 mr-2" />
-                        Complete Cash Sale
+                        {isProcessingSale ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing Sale...
+                          </>
+                        ) : (
+                          <>
+                            <Receipt className="w-4 h-4 mr-2" />
+                            Complete Cash Sale
+                          </>
+                        )}
                       </Button>
                     </TabsContent>
 
