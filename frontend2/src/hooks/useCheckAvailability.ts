@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, UseQueryResult } from '@tanstack/react-query';
 import apiClient from '@/api/api';
+import { BookResponse } from '@/types/books';
+
 
 export const useCheckTenantName = (name: string, enabled: boolean) => {
   return useQuery({
@@ -20,5 +22,19 @@ export const useCheckAdminEmail = (email: string, enabled: boolean) => {
       return data.exists;
     },
     enabled: enabled && !!email,
+  });
+};
+
+export const useCheckBookAvailability = (
+  isbn: string,
+  enabled: boolean
+): UseQueryResult<BookResponse | null, Error> => {
+  return useQuery<BookResponse | null, Error>({
+    queryKey: ['checkBookAvailability', isbn],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`books/isbn/${isbn}`);
+      return data ? data : null;
+    },
+    enabled: enabled && !!isbn,
   });
 };

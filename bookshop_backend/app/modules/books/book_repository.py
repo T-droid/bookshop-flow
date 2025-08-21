@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlmodel import select
 import uuid
 from .book_model import BookCreateBase, BookEditionCreateBase
 from ...db import models
-from typing import Union
+from typing import Union, Dict
 
 class BookRepository:
     def __init__(self, db: AsyncSession):
@@ -50,6 +50,36 @@ class BookRepository:
             new_book_edition = models.BookEdition(**book_edition.dict())
             await self.save(new_book_edition)
             return new_book_edition.edition_id
+        
+    async def get_book_with_inventory(self, isbn: str, tenant_id: uuid.UUID) -> Union[Dict, None]:
+        stmt = select(
+            models.Book.title,
+            models.Book.author,
+            models.BookEdition.isbn_number,
+            (models.Inventory.quantity_on_hand - models.Inventory.quantity_reserved).label('available_quantity'),
+            (models.Inventory.cost_price * (1 + models.Inventory.profit) * (1 - models.Inventory.discount)).label('sale_price')
+        ).select_from(
+            models.BookEdition
+        ).join(
+            models.Book, models.BookEdition.book_id == models.Book.id
+        ).join(
+            models.Inventory, models.BookEdition.edition_id == models.Inventory.edition_id
+        ).where(
+            models.BookEdition.isbn_number == isbn,
+            models.Inventory.tenant_id == tenant_id
+        )
+        result = await self.db.execute(stmt)
+        book_data = result.first()
+        if book_data:
+            return {
+                "title": book_data.title,
+                "author": book_data.author,
+                "isbn_number": book_data.isbn_number,
+                "available_quantity": book_data.available_quantity,
+                "sale_price": book_data.sale_price
+            }
+        return None
+        
 
     async def save(self, model: Union[models.Book, models.BookEdition, models.Category]) -> None:
         self.db.add(model)

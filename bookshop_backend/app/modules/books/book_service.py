@@ -67,4 +67,28 @@ class BookService:
                 success=False,
                 error=f"Failed to add bulk books: {str(e)}"
             )
-        
+    
+    async def get_book_inventory_by_isbn(self, isbn: str, tenant_id: uuid.UUID) -> ServiceResult:
+        try:
+            book_data = await self.repository.get_book_with_inventory(isbn, tenant_id)
+            
+            if book_data:
+                return ServiceResult(
+                    success=True,
+                    data={
+                        "book_found": True,
+                        **book_data
+                    },
+                    message="Book found successfully"
+                )
+            else:
+                return ServiceResult(
+                    success=True,
+                    data={
+                        "book_found": False,
+                        "isbn": isbn
+                    },
+                    message="Book not found"
+                )
+        except Exception as e:
+            raise Exception(f"Database error while searching for book: {str(e)}")
