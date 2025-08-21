@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlmodel import select
 import uuid
 from .inventory_model import InventoryCreateBase
 from ...db import models
@@ -14,6 +14,11 @@ class InventoryRepository:
             models.Inventory.edition_id == edition_id,
             models.Inventory.tenant_id == tenant_id
         )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_inventory_by_id(self, inventory_id: uuid.UUID) -> models.Inventory | None:
+        stmt = select(models.Inventory).where(models.Inventory.inventory_id == inventory_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
     
