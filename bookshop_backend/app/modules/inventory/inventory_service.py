@@ -2,6 +2,7 @@ from ...utils.result import ServiceResult
 from ...db.session import SessionDep
 from .inventory_repository import InventoryRepository
 from .inventory_model import InventoryCreateBase
+import uuid
 
 class InventoryService:
     def __init__(self, db: SessionDep):
@@ -39,4 +40,26 @@ class InventoryService:
             return ServiceResult(
                 success=False,
                 error=f"Failed to create inventory item: {str(e)}"
+            )
+
+    async def update_inventory_quantity(self, inventory_id: uuid.UUID, quantity: int) -> ServiceResult:
+        try:
+            inventory_item = await self.repository.get_inventory_by_id(inventory_id)
+            if not inventory_item:
+                return ServiceResult(
+                    success=False,
+                    error="Inventory item not found"
+                )
+            updated_inventory = await self.repository.update_inventory_item_quantity(
+                inventory_item=inventory_item,
+                quantity=quantity
+            )
+            return ServiceResult(
+                success=True,
+                data=updated_inventory
+            )
+        except Exception as e:
+            return ServiceResult(
+                success=False,
+                error=f"Failed to update inventory quantity: {str(e)}"
             )
