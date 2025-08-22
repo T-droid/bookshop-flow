@@ -10,7 +10,6 @@ const INVENTORY_ID = 'b0f77a47-03b0-495a-ba8c-d52b48da68e6'
 export const salesApi = {
   // Create a new sale
   createSale: async (saleData: SalesRequestBody): Promise<CreateSaleResponse> => {
-    console.log(saleData);
     saleData.sale_items.forEach(item => {
       item.edition_id = EDITION_ID;
       item.inventory_id = INVENTORY_ID;

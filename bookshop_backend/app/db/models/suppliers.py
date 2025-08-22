@@ -15,6 +15,9 @@ class Supplier(SQLModel, table=True):
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
     name: str = Field(max_length=255, index=True, nullable=False)
     contact_info: Optional[str] = Field(default=None, max_length=500)
+    category: Optional[str] = Field(default=None, max_length=100)
+    payment_terms: Optional[str] = Field(default=None, max_length=255)
+    status: str = Field(max_length=20, default="active")  # active, inactive, pending
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 

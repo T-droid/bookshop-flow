@@ -1,13 +1,17 @@
 import { Search, Plus, Building2, Mail, Phone, Edit, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { StatsCard } from "@/components/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AddSupplierModal } from "@/components/AddSupplierModal";
 
-export default function Publishers() {
-  const publishers = [
+export default function Suppliers() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  const suppliers = [
     {
       id: 1,
       name: "Penguin Random House",
@@ -40,18 +44,25 @@ export default function Publishers() {
     },
   ];
 
+  const handleAddSuppliers = (newSuppliers) => {
+    // Here you would typically call an API to save the suppliers
+    console.log("Adding suppliers:", newSuppliers);
+    // For now, just close the modal
+    setIsAddModalOpen(false);
+  };
+
   return (
     <AppLayout>
       <div className="container mx-auto px-6 py-8 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Publishers & Suppliers</h1>
-            <p className="text-muted-foreground">Manage your publishing partners and suppliers</p>
+            <h1 className="text-3xl font-bold text-foreground">Suppliers</h1>
+            <p className="text-muted-foreground">Manage your suppliers</p>
           </div>
-          <Button variant="premium" size="lg" className="gap-2">
+          <Button variant="premium" size="lg" className="gap-2" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="w-5 h-5" />
-            Add Publisher
+            Add Supplier
           </Button>
         </div>
 
@@ -88,12 +99,12 @@ export default function Publishers() {
         {/* Publishers Table */}
         <Card className="bg-card border border-border shadow-card-soft">
           <div className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Publishers Directory</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Suppliers Directory</h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Publisher</th>
+                    <th className="text-left p-3 text-sm font-medium text-muted-foreground">Suppliers</th>
                     <th className="text-left p-3 text-sm font-medium text-muted-foreground">Contact Person</th>
                     <th className="text-left p-3 text-sm font-medium text-muted-foreground">Contact Info</th>
                     <th className="text-left p-3 text-sm font-medium text-muted-foreground">Address</th>
@@ -103,41 +114,41 @@ export default function Publishers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {publishers.map((publisher) => (
-                    <tr key={publisher.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                  {suppliers.map((supplier) => (
+                    <tr key={supplier.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                       <td className="p-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                             <Building2 className="w-5 h-5 text-primary" />
                           </div>
-                          <span className="font-medium text-foreground">{publisher.name}</span>
+                          <span className="font-medium text-foreground">{supplier.name}</span>
                         </div>
                       </td>
-                      <td className="p-3 text-foreground">{publisher.contactPerson}</td>
+                      <td className="p-3 text-foreground">{supplier.contactPerson}</td>
                       <td className="p-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Mail className="w-3 h-3" />
-                            {publisher.email}
+                            {supplier.email}
                           </div>
                           <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Phone className="w-3 h-3" />
-                            {publisher.phone}
+                            {supplier.phone}
                           </div>
                         </div>
                       </td>
                       <td className="p-3 text-sm text-muted-foreground max-w-xs truncate">
-                        {publisher.address}
+                        {supplier.address}
                       </td>
                       <td className="p-3">
-                        <Badge variant="secondary">{publisher.totalBooks}</Badge>
+                        <Badge variant="secondary">{supplier.totalBooks}</Badge>
                       </td>
                       <td className="p-3">
                         <Badge 
-                          variant={publisher.status === "Active" ? "default" : "secondary"}
-                          className={publisher.status === "Active" ? "bg-accent text-accent-foreground" : ""}
+                          variant={supplier.status === "Active" ? "default" : "secondary"}
+                          className={supplier.status === "Active" ? "bg-accent text-accent-foreground" : ""}
                         >
-                          {publisher.status}
+                          {supplier.status}
                         </Badge>
                       </td>
                       <td className="p-3">
@@ -158,6 +169,12 @@ export default function Publishers() {
           </div>
         </Card>
       </div>
+
+      <AddSupplierModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)}
+        onAddSuppliers={handleAddSuppliers}
+      />
     </AppLayout>
   );
 }
