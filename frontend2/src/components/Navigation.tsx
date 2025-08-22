@@ -9,7 +9,7 @@ const navItems = [
   { icon: Boxes, label: "Stock Management", href: "/inventory-management" },
   { icon: Receipt, label: "Purchase Orders", href: "/create-purchase-order" },
   { icon: Shield, label: "Admin", href: "/admin-dashboard" },
-  { icon: Users, label: "Publishers", href: "/publishers" },
+  { icon: Users, label: "Suppliers", href: "/suppliers" },
   { icon: FileText, label: "Sales", href: "/sales" },
   { icon: BarChart3, label: "Reports", href: "/reports" },
   { icon: Calculator, label: "Tax Settings", href: "/tax-settings" },
