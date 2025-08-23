@@ -19,6 +19,7 @@ import CreatePurchaseOrder from "./pages/CreatePurchaseOrder";
 import AdminDashboard from "./pages/AdminDashboard";
 import InventoryManagement from "./pages/InventoryManagement";
 import { NotificationProvider } from "./components/NotificationProvider";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -33,20 +34,77 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/suppliers" element={<Suppliers />} />
-              <Route path="/sales" element={<Sales />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/tax-settings" element={<TaxSettings />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/audit-logs" element={<AuditLogs />} />
-              <Route path="/bookshop-admin" element={<BookshopAdmin />} />
-              <Route path="/dashboard/super-admin" element={<SuperAdmin />} />
+
+              <Route path="/suppliers" element={
+                <ProtectedRoute roles={["admin", "manager"]}>
+                  <Suppliers />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/sales" element={
+                <ProtectedRoute roles={["sales", "admin"]}>
+                  <Sales />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/reports" element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Reports />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/tax-settings" element={
+                <ProtectedRoute roles={["finance", "admin"]}>
+                  <TaxSettings />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/settings" element={
+                <ProtectedRoute roles={["admin"]}>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/audit-logs" element={
+                <ProtectedRoute roles={["super-admin"]}>
+                  <AuditLogs />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/bookshop-admin" element={
+                <ProtectedRoute roles={["bookshop-admin", "super-admin"]}>
+                  <BookshopAdmin />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/dashboard/super-admin" element={
+                <ProtectedRoute roles={["super-admin"]}>
+                  <SuperAdmin />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/create-purchase-order" element={
+                <ProtectedRoute roles={["purchaser", "admin"]}>
+                  <CreatePurchaseOrder />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin-dashboard" element={
+                <ProtectedRoute roles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/inventory-management" element={
+                <ProtectedRoute roles={["inventory-manager", "admin"]}>
+                  <InventoryManagement />
+                </ProtectedRoute>
+              } />
+
               <Route path="/auth/login" element={<Login />} />
-              <Route path="/create-purchase-order" element={<CreatePurchaseOrder />} />
-              <Route path="/admin-dashboard" element={<AdminDashboard />} />
-              <Route path="/inventory-management" element={<InventoryManagement />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

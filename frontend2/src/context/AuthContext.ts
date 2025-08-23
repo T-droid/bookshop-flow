@@ -7,6 +7,7 @@ export interface AuthState {
   user: LoginResponse | null;
   logIn: (email: string, password: string) => void;
   logOut: () => void;
+  hasRole: (role: string) => boolean;
   accessTokenRef: RefObject<string | null>
 }
 
