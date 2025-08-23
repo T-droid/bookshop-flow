@@ -10,9 +10,9 @@ class AuthRepository:
     async def get_user_by_email(self, email: str) -> Union[models.User, models.SuperAdmin, None]:
         """Retrieve a user by email."""
         if email == "admin@bookshop.com":
-            return await self._get_superadmin_by_email(email)             
-        
-        stmt = select(models.User).where(models.User.email == email)
+            return await self._get_superadmin_by_email(email)
+
+        stmt = select(models.User).join(models.Tenant).where(models.User.email == email)
         result = await self.db_session.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -21,9 +21,4 @@ class AuthRepository:
         stmt = select(models.SuperAdmin).where(models.SuperAdmin.email == email)
         result = await self.db_session.execute(stmt)
         return result.scalar_one_or_none()
-
-
-    async def create_user(self, user_data):
-        pass
-
     

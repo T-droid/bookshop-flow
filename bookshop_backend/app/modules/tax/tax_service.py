@@ -15,7 +15,6 @@ class TaxService:
             if existing_tax_rate:
                 return ServiceResult(success=False, error="Tax rate with this name already exists")
             
-            # If this tax rate is being set as default, unset any existing default
             if tax_rate_data.default:
                 await self._unset_existing_default(tenant_id)
             

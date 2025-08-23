@@ -27,7 +27,7 @@ async def login(
             detail=auth_result.error
         )
 
-    login_result = await service.login_user(credentials.email, auth_result.data.role)
+    login_result = await service.login_user(auth_result.data)
     if not login_result.success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
