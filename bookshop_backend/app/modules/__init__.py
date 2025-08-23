@@ -4,6 +4,7 @@ from .auth.auth_controller import router as auth_router
 from .onboarding.onboarding_controller import router as onboarding_router
 from .books.book_controller import router as book_router
 from .suppliers.supplier_controller import router as supplier_router
+from .tax.tax_controller import router as tax_router
 
 
 api_router = APIRouter()
@@ -40,5 +41,12 @@ api_router.include_router(
     supplier_router,
     prefix="/suppliers",
     tags=["Suppliers"],
+    responses={404: {"description": "Not found"}},
+)
+
+api_router.include_router(
+    tax_router,
+    prefix="/tax",
+    tags=["Tax"],
     responses={404: {"description": "Not found"}},
 )
