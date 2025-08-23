@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, status, Query, Request
+from fastapi import APIRouter, Body, HTTPException, status, Query, Request, Depends
 from fastapi.responses import JSONResponse
 from typing import Annotated
 from app.db.session import SessionDep
@@ -6,6 +6,12 @@ from ..tenants.tenants_model import TenantCreate
 from ..user.user_model import UserCreate
 from .onboarding_service import OnboardingService
 from .onboarding_model import TenantCreate as OnboardingTenantCreate
+from ...utils.auth import (
+    get_current_user,
+    require_role,
+    CurrentUser,
+    UserRole
+)
 
 
 router = APIRouter()
@@ -14,7 +20,8 @@ router = APIRouter()
 async def create_tenant_admin(
     db: SessionDep,
     tenantAdmin: OnboardingTenantCreate,
-    request: Request
+    request: Request,
+    user: CurrentUser = Depends(require_role([UserRole.SUPERADMIN]))
 ):
     """Create a new tenant with an admin user."""
     service = OnboardingService(db)
@@ -47,7 +54,10 @@ async def create_tenant_admin(
     return response_data
 
 @router.get('/tenants', status_code=status.HTTP_200_OK)
-async def list_tenants(db: SessionDep):
+async def list_tenants(
+    db: SessionDep,
+    user: CurrentUser = Depends(require_role([UserRole.SUPERADMIN]))
+):
     """List all tenants."""
     service = OnboardingService(db)
     
@@ -63,7 +73,8 @@ async def list_tenants(db: SessionDep):
 @router.get('/tenant/{tenant_id}', status_code=status.HTTP_200_OK)
 async def get_tenant(
     tenant_id: str,
-    db: SessionDep
+    db: SessionDep,
+    user: CurrentUser = Depends(require_role([UserRole.SUPERADMIN]))
 ):
     """Get a tenant by ID."""
     service = OnboardingService(db)
@@ -80,7 +91,8 @@ async def get_tenant(
 @router.get('/check-tenant-name', status_code=status.HTTP_200_OK)
 async def check_tenant_name(
     name: Annotated[str, Query(min_length=1)],
-    db: SessionDep
+    db: SessionDep,
+    user: CurrentUser = Depends(require_role([UserRole.SUPERADMIN]))
 ):
     """Check if a tenant name is available."""
     service = OnboardingService(db)
@@ -97,7 +109,8 @@ async def check_tenant_name(
 @router.get('/check-admin-email', status_code=status.HTTP_200_OK)
 async def check_admin_email(
     email: Annotated[str, Query(min_length=1)],
-    db: SessionDep
+    db: SessionDep,
+    user: CurrentUser = Depends(require_role([UserRole.SUPERADMIN]))
 ):
     """Check if an admin email is available."""
     service = OnboardingService(db)
@@ -114,7 +127,8 @@ async def check_admin_email(
 @router.delete('/tenant/{tenant_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tenant(
     tenant_id: str,
-    db: SessionDep
+    db: SessionDep,
+    user: CurrentUser = Depends(require_role([UserRole.SUPERADMIN]))
 ):
     """Delete a tenant by ID."""
     service = OnboardingService(db)
