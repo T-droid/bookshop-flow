@@ -4,7 +4,7 @@ from ...utils.result import ServiceResult
 from ...utils.password_manager import verify_password
 from ...utils.password_manager import hash_password, verify_password
 from ...utils.tokens import create_access_token, create_refresh_token, verify_refresh_token
-
+from ...db import models
 
 class AuthService:
     def __init__(self, db: SessionDep):
@@ -23,10 +23,20 @@ class AuthService:
             success=False,
             error="Invalid email or password"
         )
-    
-    async def login_user(self, email: str, role: str) -> ServiceResult:
-        access_token: str = create_access_token({"email": email, "role": role})
-        refresh_token: str = create_refresh_token({"email": email, "role": role})
+
+    async def login_user(self, user: models.User) -> ServiceResult:
+        access_token: str = create_access_token({
+            "email": user.email,
+            "role": user.role,
+            "user_id": str(user.id),
+            "tenant_id": str(user.tenant_id) if user.tenant_id else None
+        })
+        refresh_token: str = create_refresh_token({
+            "email": user.email,
+            "role": user.role,
+            "user_id": str(user.id),
+            "tenant_id": str(user.tenant_id) if user.tenant_id else None
+        })
         return ServiceResult(
             data={
                 "access_token": access_token,

@@ -13,7 +13,7 @@ class BookService:
         self.repository = BookRepository(db)
         self.inventory_service = InventoryService(db)
 
-    async def add_bulk_books(self, books: List[CSVBookCreate]) -> ServiceResult:
+    async def add_bulk_books(self, books: List[CSVBookCreate], tenant_id: uuid.UUID) -> ServiceResult:
         try:
             for book in books:
                 # create category if it doesn't exist
@@ -46,7 +46,7 @@ class BookService:
                 # create inventory item
                 inventory_data = InventoryCreateBase(
                     edition_id=edition_id,
-                    tenant_id=uuid.UUID("6e439a65-0e33-4181-8773-7a48df2bdfdf"),
+                    tenant_id=tenant_id,
                     quantity_on_hand=book.quantity
                 )
                 inventory_item = await self.inventory_service.create_inventory_item(inventory_data)
