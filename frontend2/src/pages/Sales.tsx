@@ -603,7 +603,7 @@ export default function Sales() {
         });
       }
     }
-  }, [bookData, clearErrors, setError, triggerBookCheck]);
+  }, [bookData, clearErrors, setError]);
 
   const getStockBadge = (stockLevel: number, quantity: number) => {
     if (stockLevel === 0) {

@@ -10,18 +10,25 @@ class TaxRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_tax_rate(self, tax_rate_data: CreateTaxModel) -> models.TaxRates:
-        tax_rate = models.TaxRates(**tax_rate_data.dict())
+    async def create_tax_rate(self, tax_rate_data: CreateTaxModel, tenant_id: uuid.UUID) -> models.TaxRates:
+        tax_rate = models.TaxRates(
+            name=tax_rate_data.taxName.lower(),
+            rate=tax_rate_data.taxRate,
+            default=tax_rate_data.isDefault,
+            description=tax_rate_data.description, 
+            effective_date=tax_rate_data.effectiveDate,
+            tenant_id=tenant_id
+            )
         await self.save(tax_rate)
         return tax_rate
     
     async def get_tax_rate_by_id(self, tax_rate_id: uuid.UUID) -> Optional[models.TaxRates]:
         result = await self.db.execute(select(models.TaxRates).where(models.TaxRates.id == tax_rate_id))
         return result.scalar_one_or_none()
-    
-    async def get_tax_rate_by_name(self, name: str) -> Optional[models.TaxRates]:
+
+    async def get_tax_rate_by_name(self, name: str, tenant_id: uuid.UUID) -> Optional[models.TaxRates]:
         result = await self.db.execute(
-            select(models.TaxRates).where(models.TaxRates.name == name)
+            select(models.TaxRates).where(models.TaxRates.name == name, models.TaxRates.tenant_id == tenant_id)
         )
         return result.scalar_one_or_none()
     
