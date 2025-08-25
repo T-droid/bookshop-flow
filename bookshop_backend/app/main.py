@@ -1,12 +1,42 @@
 from fastapi import FastAPI
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.modules import api_router
 
 from .middleware.auth_middleware import AuthMiddleware
 
-app = FastAPI()
+app = FastAPI(
+    title="Bookshop flow api",
+    description="Backend API for Bookshop flow application",
+    version="1.0.0",
+)
 # app.add_middleware(AuthMiddleware)
+security = HTTPBearer()
+
+def custom_openapi_auth():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your JWT token"
+        }
+    }
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
 
 app.add_middleware(
     CORSMiddleware,

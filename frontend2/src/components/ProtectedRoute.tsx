@@ -232,7 +232,7 @@ const UnauthorizedAccess = () => {
 };
 
 // Insufficient Permissions Component
-const InsufficientPermissions = ({ requiredRole }: { requiredRole: string }) => {
+const InsufficientPermissions = ({ requiredRoles }: { requiredRoles: string[] }) => {
     const navigate = useNavigate();
 
     return (
@@ -249,7 +249,7 @@ const InsufficientPermissions = ({ requiredRole }: { requiredRole: string }) => 
                     
                     <div className="bg-muted/50 rounded-lg p-4 mb-4">
                         <p className="text-sm text-muted-foreground">
-                            <span className="font-medium">Required Role:</span> {requiredRole}
+                            <span className="font-medium">Required Roles:</span> {requiredRoles.join(', ')}
                         </p>
                     </div>
                 </div>
@@ -294,8 +294,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ roles, children }) => {
         return <UnauthorizedAccess />;
     }
 
-    if (roles.length > 0 && roles.some(role => !hasRole(role))) {
-        return <InsufficientPermissions requiredRole={roles.find(role => !hasRole(role))} />;
+    // Check if user has any of the required roles
+    if (roles && roles.length > 0 && !roles.some(role => hasRole(role))) {
+        return <InsufficientPermissions requiredRoles={roles} />;
     }
 
     return (

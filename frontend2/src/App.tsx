@@ -32,59 +32,26 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/" element={
+                <ProtectedRoute roles={["admin", "manager", "sales", "finance", "superadmin"]}>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/dashboard" element={
+                <ProtectedRoute roles={["admin", "manager", "sales", "finance", "superadmin"]}>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
 
-              <Route path="/suppliers" element={
+              <Route path="/inventory-management" element={
                 <ProtectedRoute roles={["admin", "manager"]}>
-                  <Suppliers />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/sales" element={
-                <ProtectedRoute roles={["sales", "admin"]}>
-                  <Sales />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/reports" element={
-                <ProtectedRoute roles={["admin"]}>
-                  <Reports />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/tax-settings" element={
-                <ProtectedRoute roles={["finance", "admin"]}>
-                  <TaxSettings />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/settings" element={
-                <ProtectedRoute roles={["admin"]}>
-                  <Settings />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/audit-logs" element={
-                <ProtectedRoute roles={["super-admin"]}>
-                  <AuditLogs />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/bookshop-admin" element={
-                <ProtectedRoute roles={["bookshop-admin", "super-admin"]}>
-                  <BookshopAdmin />
-                </ProtectedRoute>
-              } />
-
-              <Route path="/dashboard/super-admin" element={
-                <ProtectedRoute roles={["super-admin"]}>
-                  <SuperAdmin />
+                  <InventoryManagement />
                 </ProtectedRoute>
               } />
 
               <Route path="/create-purchase-order" element={
-                <ProtectedRoute roles={["purchaser", "admin"]}>
+                <ProtectedRoute roles={["admin", "manager"]}>
                   <CreatePurchaseOrder />
                 </ProtectedRoute>
               } />
@@ -95,9 +62,52 @@ const App = () => (
                 </ProtectedRoute>
               } />
 
-              <Route path="/inventory-management" element={
-                <ProtectedRoute roles={["inventory-manager", "admin"]}>
-                  <InventoryManagement />
+              <Route path="/suppliers" element={
+                <ProtectedRoute roles={["admin", "manager"]}>
+                  <Suppliers />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/sales" element={
+                <ProtectedRoute roles={["admin", "manager", "sales"]}>
+                  <Sales />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/reports" element={
+                <ProtectedRoute roles={["admin", "manager", "sales"]}>
+                  <Reports />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/tax-settings" element={
+                <ProtectedRoute roles={["admin", "manager", "finance"]}>
+                  <TaxSettings />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/settings" element={
+                <ProtectedRoute roles={["admin", "manager"]}>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+
+              {/* Routes not in navigation - keeping existing roles */}
+              <Route path="/audit-logs" element={
+                <ProtectedRoute roles={["superadmin"]}>
+                  <AuditLogs />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/bookshop-admin" element={
+                <ProtectedRoute roles={["admin", "superadmin"]}>
+                  <BookshopAdmin />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/dashboard/super-admin" element={
+                <ProtectedRoute roles={["superadmin"]}>
+                  <SuperAdmin />
                 </ProtectedRoute>
               } />
 

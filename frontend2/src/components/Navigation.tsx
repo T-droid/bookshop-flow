@@ -5,20 +5,20 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
-  { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true },
-  { icon: Boxes, label: "Stock Management", href: "/inventory-management" },
-  { icon: Receipt, label: "Purchase Orders", href: "/create-purchase-order" },
-  { icon: Shield, label: "Admin", href: "/admin-dashboard" },
-  { icon: Users, label: "Suppliers", href: "/suppliers" },
-  { icon: FileText, label: "Sales", href: "/sales" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
-  { icon: Calculator, label: "Tax Settings", href: "/tax-settings" },
-  { icon: Settings, label: "Settings", href: "/settings" },
+  { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true, roles: ["admin", "manager", "sales", "finance", "superadmin"] },
+  { icon: Boxes, label: "Stock Management", href: "/inventory-management", roles: ["admin", "manager"] },
+  { icon: Receipt, label: "Purchase Orders", href: "/create-purchase-order", roles: ["admin", "manager"] },
+  { icon: Shield, label: "Admin", href: "/admin-dashboard", roles: ["admin"] },
+  { icon: Users, label: "Suppliers", href: "/suppliers", roles: ["admin", "manager"] },
+  { icon: FileText, label: "Sales", href: "/sales", roles: ["admin", "manager", "sales"] },
+  { icon: BarChart3, label: "Reports", href: "/reports", roles: ["admin", "manager", "sales"] },
+  { icon: Calculator, label: "Tax Settings", href: "/tax-settings", roles: ["admin", "manager", "finance"] },
+  { icon: Settings, label: "Settings", href: "/settings", roles: ["admin", "manager"] },
 ];
 
 export function Navigation() {
   const navigate = useNavigate();
-  const { logOut} = useAuth()
+  const { logOut, role } = useAuth();
 
   const handleNavigate = (href: string) => {
     navigate(href, { replace: true });
@@ -45,7 +45,8 @@ export function Navigation() {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
+            {navItems.map((item) => 
+            item.roles.includes(role) && (
               <Button
                 key={item.label}
                 variant={item.active ? "accent" : "ghost"}
