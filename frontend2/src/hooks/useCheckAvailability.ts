@@ -38,3 +38,14 @@ export const useCheckBookAvailability = (
     enabled: enabled && !!isbn,
   });
 };
+
+export const useCheckTaxNameAvailability = (name: string, enabled: boolean) => {
+  return useQuery({
+    queryKey: ['checkTaxName', name],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/taxes/check-tax-name?name=${name}`);
+      return data.is_unique;
+    },
+    enabled: enabled && !!name,
+  });
+}

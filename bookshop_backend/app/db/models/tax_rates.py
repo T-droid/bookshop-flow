@@ -10,6 +10,7 @@ class TaxRates(SQLModel, table=True):
     name: str = Field(max_length=100, nullable=False)
     rate: float = Field(nullable=False)
     default: bool = Field(default=False, nullable=False)
+    effective_date: datetime = Field(nullable=False)
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now, index=True)
 

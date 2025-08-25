@@ -6,6 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { set, SubmitHandler, useForm } from "react-hook-form";
+import { useCallback, useEffect, useState } from "react";
+import debounce from "lodash.debounce";
+import { useCheckTaxNameAvailability } from "@/hooks/useCheckAvailability";
+import { ErrorMessage, SuccessMessage } from "@/components/ValidationInputError";
+import { z } from "zod";
+import { Checkbox } from "@/components/ui/checkbox";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { NewTaxRate, NewTaxRateSchema } from "@/schemas/taxSchema";
+import { useCreateTaxRate } from "@/hooks/useCreateResource";
+
+
 
 export default function TaxSettings() {
   const taxRates = [
@@ -34,6 +46,65 @@ export default function TaxSettings() {
       description: "Higher VAT rate for premium books and collectibles"
     }
   ];
+  const [triggerCheckName, setTriggerCheckName] = useState(false);
+
+  const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = useForm<NewTaxRate>({
+    resolver: zodResolver(NewTaxRateSchema),
+    defaultValues: {
+      isDefault: false,
+    }
+  });
+  const taxName = watch("taxName");
+
+  const { data: isTaxNameUnique } = useCheckTaxNameAvailability(taxName, triggerCheckName);
+  const { mutateAsync: createTaxRate } = useCreateTaxRate();
+
+  const debouncedCheckName = useCallback(
+    debounce((name: string) => {
+      if (name && name.trim().length > 0) {
+        setTriggerCheckName(true);
+      } else {
+        setTriggerCheckName(false);
+      }
+    }, 300),
+    [setTriggerCheckName]
+  );
+
+  useEffect(() => {
+    debouncedCheckName(taxName || "");
+
+    return () => {
+      debouncedCheckName.cancel();
+      setTriggerCheckName(false);
+    };
+  }, [taxName, debouncedCheckName]);
+
+  useEffect(() => {
+    if (isTaxNameUnique === undefined) return;
+    if (isTaxNameUnique) {
+      clearErrors("taxName");
+    } else {
+      setError("taxName", { type: "manual", message: "Tax name already exists" });
+    }
+  }, [isTaxNameUnique, setError, clearErrors]);
+
+
+  const onSubmit: SubmitHandler<NewTaxRate> = async (data) => {
+    await createTaxRate(data)
+    .then(() => {
+      setValue("taxName", "");
+      clearErrors("taxName");
+      setValue("taxRate", undefined);
+      clearErrors("taxRate");
+      setValue("effectiveDate", "");
+      clearErrors("effectiveDate");
+      setValue("description", "");
+      clearErrors("description");
+      setValue("isDefault", false);
+      clearErrors("isDefault");
+    })
+  };
+
 
   return (
     <AppLayout>
@@ -54,17 +125,23 @@ export default function TaxSettings() {
                 <Plus className="w-5 h-5" />
                 Add New Tax Rate
               </h3>
-              
-              <form className="space-y-4">
+
+              <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                 <div>
                   <Label htmlFor="taxName" className="text-sm font-medium text-foreground">
                     Tax Rate Name
                   </Label>
                   <Input 
-                    id="taxName"
+                    {...register("taxName")}
                     placeholder="e.g., Standard VAT"
                     className="bg-background mt-1"
                   />
+                  {errors.taxName && (
+                    <ErrorMessage message={errors.taxName.message as string} />
+                  )}
+                  {!errors?.taxName && taxName && (
+                    <SuccessMessage message="Tax name is available" />
+                  )}
                 </div>
 
                 <div>
@@ -72,12 +149,15 @@ export default function TaxSettings() {
                     Rate (%)
                   </Label>
                   <Input 
-                    id="taxRate"
+                    {...register("taxRate")}
                     type="number"
                     step="0.01"
-                    placeholder="15.00"
+                    placeholder="e.g., 0.15 for 15%"
                     className="bg-background mt-1"
                   />
+                  {errors.taxRate && (
+                    <ErrorMessage message={errors.taxRate.message as string} />
+                  )}
                 </div>
 
                 <div>
@@ -85,10 +165,13 @@ export default function TaxSettings() {
                     Effective Date
                   </Label>
                   <Input 
-                    id="effectiveDate"
+                    {...register("effectiveDate")}
                     type="date"
                     className="bg-background mt-1"
                   />
+                  {errors.effectiveDate && (
+                    <ErrorMessage message={errors.effectiveDate.message as string} />
+                  )}
                 </div>
 
                 <div>
@@ -96,14 +179,36 @@ export default function TaxSettings() {
                     Description
                   </Label>
                   <Textarea 
-                    id="description"
+                    {...register("description")}
                     placeholder="Description of when this tax rate applies..."
                     className="bg-background mt-1"
                     rows={3}
                   />
+                  {errors.description && (
+                    <ErrorMessage message={errors.description.message as string} />
+                  )}
+                </div>
+                {/* check box for default tax rate */}
+                <div className="flex items-center">
+                  <Checkbox
+                    {...register("isDefault")}
+                    checked={watch("isDefault")}
+                    onCheckedChange={(checked) => {
+                      setValue("isDefault", !!checked);
+                    }}
+                    className="mr-2"
+                  />
+                  <Label htmlFor="isDefault" className="text-sm font-medium text-foreground">
+                    Set as default tax rate
+                  </Label>
                 </div>
 
-                <Button variant="accent" className="w-full gap-2">
+                <Button
+                  variant="accent"
+                  className="w-full gap-2"
+                  type="submit"
+                  disabled={!!errors.taxName}
+                >
                   <Plus className="w-4 h-4" />
                   Add Tax Rate
                 </Button>

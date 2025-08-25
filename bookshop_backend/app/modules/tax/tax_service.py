@@ -11,14 +11,14 @@ class TaxService:
 
     async def create_tax_rate(self, tax_rate_data: CreateTaxModel, tenant_id: uuid.UUID) -> ServiceResult:
         try:
-            existing_tax_rate = await self.repo.get_tax_rate_by_name(tax_rate_data.name.lower(), tenant_id)
+            existing_tax_rate = await self.repo.get_tax_rate_by_name(tax_rate_data.taxName.lower(), tenant_id)
             if existing_tax_rate:
                 return ServiceResult(success=False, error="Tax rate with this name already exists")
-            
-            if tax_rate_data.default:
+
+            if tax_rate_data.isDefault:
                 await self._unset_existing_default(tenant_id)
-            
-            tax_rate_data.name = tax_rate_data.name.lower()
+
+            tax_rate_data.taxName = tax_rate_data.taxName.lower()
             tax_rate = await self.repo.create_tax_rate(tax_rate_data, tenant_id)
             return ServiceResult(success=True, data=tax_rate.id)
         except Exception as e:
@@ -31,19 +31,19 @@ class TaxService:
                 return ServiceResult(success=False, error="Tax rate not found")
             
             # Check name uniqueness if name is being updated
-            if tax_rate_data.name:
-                existing_tax_rate_by_name = await self.repo.get_tax_rate_by_name(tax_rate_data.name.lower(), tenant_id)
+            if tax_rate_data.taxName:
+                existing_tax_rate_by_name = await self.repo.get_tax_rate_by_name(tax_rate_data.taxName.lower(), tenant_id)
                 if existing_tax_rate_by_name and existing_tax_rate_by_name.id != tax_rate_id:
                     return ServiceResult(success=False, error="Tax rate with this name already exists")
-                existing_tax_rate.name = tax_rate_data.name.lower()
-            
+                existing_tax_rate.taxName = tax_rate_data.taxName.lower()
+
             # If this tax rate is being set as default, unset any existing default
-            if tax_rate_data.default:
+            if tax_rate_data.isDefault:
                 await self._unset_existing_default(tenant_id, exclude_id=tax_rate_id)
             
             # Update the tax rate fields
             for field, value in tax_rate_data.dict(exclude_unset=True).items():
-                if field != 'name':
+                if field != 'taxName':
                     setattr(existing_tax_rate, field, value)
             
             await self.repo.save(existing_tax_rate)
@@ -74,6 +74,17 @@ class TaxService:
             if not default_tax:
                 return ServiceResult(success=False, error="No default tax rate found")
             return ServiceResult(success=True, data=default_tax)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
+        
+    async def is_tax_name_unique(self, name: str, tenant_id: uuid.UUID) -> ServiceResult:
+        """
+        Check if a tax name is unique within the tenant
+        """
+        try:
+            existing_tax_rate = await self.repo.get_tax_rate_by_name(name.lower(), tenant_id)
+            is_unique = existing_tax_rate is None
+            return ServiceResult(success=True, data=is_unique)
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
     

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, status, Depends, Path
+from fastapi import APIRouter, Body, HTTPException, status, Depends, Path, Query
 from .tax_model import CreateTaxModel, UpdateTaxModel
 from .tax_service import TaxService
 from ...db.session import SessionDep
@@ -9,9 +9,9 @@ from ...utils.auth import (
     require_permission,
     CurrentUser,
     UserRole,
-    Permission
 )
 import uuid
+from typing import Annotated
 
 
 router = APIRouter()
@@ -27,15 +27,46 @@ async def create_tax_rate(
     Requires: Admin or Manager role
     """
     service = TaxService(db)
-    result = await service.create_tax_rate(tax_rate, get_current_tenant_id(user))
-    
+    result = await service.create_tax_rate(tax_rate, user.tenant_id)
+
     if not result.success:
+        print(result.error)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=result.error
         )
     
     return {"id": result.data, "message": "Tax rate created successfully"}
+
+@router.get('/check-tax-name', status_code=status.HTTP_200_OK)
+async def check_tax_name(
+    name: Annotated[str, Query(..., min_length=1, max_length=100)],
+    db: SessionDep,
+    user: CurrentUser = Depends(get_current_user)  # Any authenticated user can check tax name
+):
+    """
+    Check if a tax name is unique within the tenant.
+    Available to all authenticated users.
+    """
+    try:
+        service = TaxService(db)
+        result = await service.is_tax_name_unique(name, user.tenant_id)
+        print(result)
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.error
+            )
+        
+        return {"is_unique": result.data}
+        
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 @router.get('', status_code=status.HTTP_200_OK)
 async def get_tax_rates(

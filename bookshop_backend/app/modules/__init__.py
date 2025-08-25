@@ -46,7 +46,7 @@ api_router.include_router(
 
 api_router.include_router(
     tax_router,
-    prefix="/tax",
-    tags=["Tax"],
+    prefix="/taxes",
+    tags=["Taxes"],
     responses={404: {"description": "Not found"}},
 )
