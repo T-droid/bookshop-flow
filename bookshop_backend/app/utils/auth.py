@@ -56,8 +56,10 @@ def get_current_user(request: Request) -> CurrentUser:
     Raises:
         HTTPException: If token is missing or invalid
     """
-    token: Optional[str] = request.cookies.get("access_token")
-    if not token:
+    token: Optional[str] = request.headers.get("Authorization")
+    if token and token.startswith("Bearer "):
+        token = token[7:]
+    else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",

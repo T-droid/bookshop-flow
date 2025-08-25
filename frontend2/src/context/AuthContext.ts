@@ -4,6 +4,7 @@ import { LoginResponse } from "@/types/user";
 export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
+  role: string | null;
   user: LoginResponse | null;
   logIn: (email: string, password: string) => void;
   logOut: () => void;

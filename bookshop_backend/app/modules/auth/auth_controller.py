@@ -36,7 +36,7 @@ async def login(
     access_token = login_result.data["access_token"]
     refresh_token = login_result.data["refresh_token"]
 
-    name = auth_result.data.name
+    name = getattr(auth_result.data, "name", None) or getattr(auth_result.data, "full_name", None)
     email = auth_result.data.email
     role = auth_result.data.role
 
@@ -78,7 +78,8 @@ async def refresh(request: Request, db: SessionDep):
 
     return JSONResponse(content={
         "access_token": payload.data["access_token"],
-        "token_type": payload.data["token_type"]
+        "token_type": payload.data["token_type"],
+        "role": payload.data["role"]
     })
 
 

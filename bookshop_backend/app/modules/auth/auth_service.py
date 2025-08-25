@@ -25,17 +25,18 @@ class AuthService:
         )
 
     async def login_user(self, user: models.User) -> ServiceResult:
+        tenant_id = getattr(user, "tenant_id", None)
         access_token: str = create_access_token({
             "email": user.email,
             "role": user.role,
             "user_id": str(user.id),
-            "tenant_id": str(user.tenant_id) if user.tenant_id else None
+            "tenant_id": str(tenant_id) if tenant_id else None
         })
         refresh_token: str = create_refresh_token({
             "email": user.email,
             "role": user.role,
             "user_id": str(user.id),
-            "tenant_id": str(user.tenant_id) if user.tenant_id else None
+            "tenant_id": str(tenant_id) if tenant_id else None
         })
         return ServiceResult(
             data={
@@ -58,7 +59,8 @@ class AuthService:
         return ServiceResult(
             data={
                 "access_token": new_access_token,
-                "token_type": "Bearer"
+                "token_type": "Bearer",
+                "role": payload.get("role")
             },
             success=True
         )
