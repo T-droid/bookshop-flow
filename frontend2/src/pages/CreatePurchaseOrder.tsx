@@ -17,6 +17,7 @@ import debounce from 'lodash.debounce';
 import { BookData } from '@/types/books';
 import { ErrorMessage } from '@/components/ValidationInputError';
 import { useGetSuppliers } from '@/hooks/useGetResources';
+import { useCreatePurchaseOrder } from '@/hooks/useCreateResource';
 
 interface BookItem {
   edition_id: string;
@@ -189,18 +190,28 @@ const CreatePurchaseOrder = () => {
   const totalQuantity = watch('books').reduce((sum, book) => sum + Number(book.quantity), 0);
   const estimatedCost = watch('books').reduce((sum, book) => sum + Number(book.quantity) * (book.cost_price || 0), 0);
 
+  const { mutateAsync: createPurchaseOrder, isPending } = useCreatePurchaseOrder();
   // Update form submission to include supplier name
-  const handlePurchaseOrderSubmit = handleSubmit((data) => {
-    const selectedSupplier = suppliersData?.find((s: any) => s.id === data.supplier);
-    
-    const formattedData = {
-      ...data,
-      supplierName: selectedSupplier?.name || '',
-      supplierContact: selectedSupplier?.contact || '',
-      // Add other supplier details as needed
+  const handlePurchaseOrderSubmit = handleSubmit(async (data) => {
+    const requestBody = {
+      supplier_id: data.supplier,
+      books: data.books
+        .filter(book => book.edition_id && book.quantity > 0 && book.cost_price > 0)
+        .map(book => ({
+          edition_id: book.edition_id,
+          quantity_ordered: parseInt(book.quantity.toString()),
+          unit_cost: parseFloat(book.cost_price.toString())
+        }))
     };
-    
-    console.log('Submitted PO:', formattedData);
+
+    await createPurchaseOrder(requestBody)
+      .then(() => {
+        // clear all  form values and reset to one empty row
+        data.books.forEach((_, index) => remove(index));
+        append({ edition_id: '', cost_price: 0, title: '', isbn: '', currentStock: 0, quantity: 1 });
+        // clear supplier selection
+        setValue('supplier', '');
+      })
     setActiveTab('list');
   });
 
@@ -546,7 +557,7 @@ const CreatePurchaseOrder = () => {
                   variant="premium" 
                   size="lg"
                   onClick={handlePurchaseOrderSubmit}
-                  disabled={!supplier || books.some(book => !book.title || !book.isbn)}
+                  disabled={!supplier || books.some(book => !book.title || !book.isbn) || isPending}
                   className="order-1 sm:order-2 min-w-[200px]"
                 >
                   Submit for Approval

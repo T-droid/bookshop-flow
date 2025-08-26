@@ -18,3 +18,20 @@ export const useCreateTaxRate = () => {
         }
     });
 }
+
+
+export const useCreatePurchaseOrder = () => {
+    return useMutation({
+        mutationFn: async (data: { supplier_id: string; books: { edition_id: string; quantity_ordered: number; unit_cost: number; }[] }) => {
+        const response = await apiClient.post("/purchase-orders", data);
+        return response.data;
+        },
+        onSuccess: () => {
+            toast.success("Purchase order created successfully");
+        },
+        onError: (error: any) => {
+            const message = error.response?.data?.detail || "Failed to create purchase order";
+            toast.error(message);
+        }
+    });
+}

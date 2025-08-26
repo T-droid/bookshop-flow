@@ -13,10 +13,10 @@ from ...utils.auth import (
 
 router = APIRouter()
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=PurchaseOrderResponse)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_purchase_order(
     response: Response,
-    purchase_order: Annotated[PurchaseOrderCreate, Body(...)],
+    purchase_order: PurchaseOrderCreate,
     db: SessionDep,
     user: CurrentUser = Depends(require_permission(Permission.MANAGE_PURCHASE_ORDERS))
     ):
