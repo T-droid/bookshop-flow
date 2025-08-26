@@ -28,8 +28,7 @@ async def create_book(
     Requires: Admin or Manager role
     """
     service = BookService(db)
-    tenant_id = get_current_tenant_id(user)
-    result = await service.add_bulk_books(book, tenant_id=tenant_id)
+    result = await service.add_bulk_books(book, tenant_id=user.tenant_id)
 
     if not result.success:
         raise HTTPException(
@@ -53,7 +52,7 @@ async def get_book_by_isbn(
         service = BookService(db)
         result = await service.get_book_inventory_by_isbn(
             isbn, 
-            tenant_id=get_current_tenant_id(user)
+            tenant_id=user.tenant_id
         )
 
         if not result.success:
@@ -89,7 +88,7 @@ async def get_all_books(
     try:
         service = BookService(db)
         result = await service.get_books_by_tenant(
-            tenant_id=get_current_tenant_id(user),
+            tenant_id=user.tenant_id,
             skip=skip,
             limit=limit
         )
@@ -124,7 +123,7 @@ async def update_book(
         result = await service.update_book(
             book_id=uuid.UUID(book_id),
             book_data=book_data,
-            tenant_id=get_current_tenant_id(user)
+            tenant_id=user.tenant_id
         )
         
         if not result.success:
@@ -160,7 +159,7 @@ async def delete_book(
         service = BookService(db)
         result = await service.delete_book(
             book_id=uuid.UUID(book_id),
-            tenant_id=get_current_tenant_id(user)
+            tenant_id=user.tenant_id
         )
         
         if not result.success:
@@ -225,8 +224,8 @@ async def bulk_import_books(
         service = BookService(db)
         result = await service.bulk_import_books(
             books=books,
-            tenant_id=get_current_tenant_id(user),
-            imported_by=get_current_user_id(user)
+            tenant_id=user.tenant_id,
+            imported_by=user.user_id
         )
         
         if not result.success:

@@ -41,8 +41,10 @@ class SupplierRepository:
         )
         return result.scalar_one_or_none() is not None
 
-    async def list_suppliers(self, tenant_id: uuid.UUID) -> List[models.Supplier]:
-        result = await self.db.execute(select(models.Supplier).where(models.Supplier.tenant_id == tenant_id))
+    async def list_suppliers(self, tenant_id: uuid.UUID, skip: int = 0, limit: int = 100) -> List[models.Supplier]:
+        result = await self.db.execute(
+            select(models.Supplier).where(models.Supplier.tenant_id == tenant_id).offset(skip).limit(limit)
+        )
         return result.scalars().all()
 
     async def save(self, model: Union[models.Supplier, models.TenantSupplier]) -> Union[models.Supplier, models.TenantSupplier]:

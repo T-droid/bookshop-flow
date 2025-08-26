@@ -174,6 +174,8 @@ class Permission(str, Enum):
     MANAGE_USERS = "manage:users"
     MANAGE_SETTINGS = "manage:settings"
     MANAGE_TENANTS = "manage:tenants"
+    MANAGE_PURCHASE_ORDERS = "manage:purchase_orders"
+
 
 # Role-based permissions mapping
 ROLE_PERMISSIONS = {
@@ -185,13 +187,16 @@ ROLE_PERMISSIONS = {
         Permission.READ_SALES, Permission.WRITE_SALES,
         Permission.READ_INVENTORY, Permission.WRITE_INVENTORY,
         Permission.READ_SUPPLIERS, Permission.WRITE_SUPPLIERS,
-        Permission.MANAGE_USERS, Permission.MANAGE_SETTINGS
+        Permission.MANAGE_USERS, Permission.MANAGE_SETTINGS,
+        Permission.MANAGE_PURCHASE_ORDERS
     ],
     UserRole.MANAGER: [
         Permission.READ_BOOKS, Permission.WRITE_BOOKS,
         Permission.READ_SALES, Permission.WRITE_SALES,
         Permission.READ_INVENTORY, Permission.WRITE_INVENTORY,
-        Permission.READ_SUPPLIERS, Permission.WRITE_SUPPLIERS
+        Permission.READ_SUPPLIERS, Permission.WRITE_SUPPLIERS,
+        Permission.MANAGE_SETTINGS,
+        Permission.MANAGE_PURCHASE_ORDERS
     ],
     UserRole.CASHIER: [
         Permission.READ_BOOKS,

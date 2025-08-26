@@ -5,6 +5,7 @@ from .onboarding.onboarding_controller import router as onboarding_router
 from .books.book_controller import router as book_router
 from .suppliers.supplier_controller import router as supplier_router
 from .tax.tax_controller import router as tax_router
+from .purchase_orders.purchase_order_controller import router as purchase_order_router
 
 
 api_router = APIRouter()
@@ -48,5 +49,12 @@ api_router.include_router(
     tax_router,
     prefix="/taxes",
     tags=["Taxes"],
+    responses={404: {"description": "Not found"}},
+)
+
+api_router.include_router(
+    purchase_order_router,
+    prefix="/purchase-orders",
+    tags=["Purchase Orders"],
     responses={404: {"description": "Not found"}},
 )

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Response, status, HTTPException, Request, Depends, Path
+from fastapi import APIRouter, Body, Response, status, HTTPException, Request, Depends, Path, Query
 from .supplier_model import SupplierCreate
 from .supplier_service import SupplierService
 from ...db.session import SessionDep
@@ -12,6 +12,8 @@ from ...utils.auth import (
     Permission
 )
 import uuid
+
+from typing import Annotated
 
 
 router = APIRouter()
@@ -41,8 +43,8 @@ async def create_supplier(
 @router.get("/", status_code=status.HTTP_200_OK)
 async def get_suppliers(
     db: SessionDep,
-    skip: int = 0,
-    limit: int = 100,
+    skip: Annotated[int, Query(...)] = 0,
+    limit: Annotated[int, Query(...)] = 100,
     user: CurrentUser = Depends(require_permission(Permission.READ_SUPPLIERS))
 ):
     """
@@ -52,7 +54,7 @@ async def get_suppliers(
     try:
         service = SupplierService(db)
         result = await service.get_suppliers_by_tenant(
-            tenant_id=get_current_tenant_id(user),
+            tenant_id=user.tenant_id,
             skip=skip,
             limit=limit
         )
