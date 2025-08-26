@@ -4,7 +4,7 @@ from typing import List, Optional, Union
 import uuid
 from decimal import Decimal
 from ...db import models
-from .purchase_order_model import PurchaseOrder, PurchaseOrderItemCreate
+from .purchase_order_model import PurchaseOrderData, PurchaseOrderItemCreate
 
 class PurchaseOrderRepository:
     """
@@ -35,7 +35,7 @@ class PurchaseOrderRepository:
         result = await self.db.execute(stmt)
         return result.scalars().all()
 
-    async def create_purchase_order(self, po_data: PurchaseOrder) -> models.PurchaseOrder:
+    async def create_purchase_order(self, po_data: PurchaseOrderData) -> models.PurchaseOrder:
         """
         Create a new purchase order in the database.
         """
