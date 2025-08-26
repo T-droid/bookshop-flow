@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, Package, Receipt, DollarSign, Eye, Search, Filter, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '@/components/AppLayout';
@@ -11,9 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
+import { useCheckBookAvailability } from '@/hooks/useCheckAvailability';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
+import debounce from 'lodash.debounce';
+import { BookData } from '@/types/books';
+import { ErrorMessage } from '@/components/ValidationInputError';
+import { useGetSuppliers } from '@/hooks/useGetResources';
 
 interface BookItem {
-  id: number;
+  edition_id: string;
+  cost_price: number;
   title: string;
   isbn: string;
   currentStock: number;
@@ -31,17 +38,25 @@ interface PurchaseOrder {
   expectedDelivery: string;
 }
 
+interface CreatePurchaseOrderFormValues {
+  supplier: string;
+  books: BookItem[];
+}
+
 const CreatePurchaseOrder = () => {
   const [activeTab, setActiveTab] = useState('create');
   const [selectedPO, setSelectedPO] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  
+  const [bookCheckISBN, setBookCheckISBN] = useState('');
+  const [triggerBookCheck, setTriggerBookCheck] = useState(false);
+  const [currentCheckIndex, setCurrentCheckIndex] = useState<number | null>(null);
+
   // Create PO state
-  const [supplier, setSupplier] = useState('');
-  const [books, setBooks] = useState<BookItem[]>([
-    { id: 1, title: '', isbn: '', currentStock: 0, quantity: 1 }
-  ]);
+  // const [supplier, setSupplier] = useState('');
+  // const [books, setBooks] = useState<BookItem[]>([
+  //   { id: "", title: '', isbn: '', currentStock: 0, quantity: 0 }
+  // ]);
 
   // Mock existing purchase orders
   const [purchaseOrders] = useState<PurchaseOrder[]>([
@@ -87,31 +102,107 @@ const CreatePurchaseOrder = () => {
     }
   ]);
 
-  const addBook = () => {
-    setBooks([...books, { id: books.length + 1, title: '', isbn: '', currentStock: 0, quantity: 1 }]);
+  // const addBook = () => {
+  //   setBooks([...books, { id: books.length + 1, title: '', isbn: '', currentStock: 0, quantity: 1 }]);
+  // };
+
+  // const removeBook = (id: number) => {
+  //   setBooks(books.filter(book => book.id !== id));
+  // };
+
+  // const updateBook = (id: number, field: keyof BookItem, value: string | number) => {
+  //   setBooks(books.map(book => 
+  //     book.id === id ? { ...book, [field]: value } : book
+  //   ));
+  // };
+
+  const { data: suppliersData, isLoading: loadingSuppliers, error: suppliersError } = useGetSuppliers();
+
+  // Handle supplier selection with actual supplier data
+  const getSelectedSupplierName = () => {
+    const selectedSupplierId = watch('supplier');
+    if (!selectedSupplierId || !suppliersData) return '';
+    
+    const supplier = suppliersData.find((s: any) => s.id === selectedSupplierId);
+    return supplier ? supplier.name : '';
   };
 
-  const removeBook = (id: number) => {
-    setBooks(books.filter(book => book.id !== id));
-  };
+  const { register, handleSubmit, control, setValue, setError, clearErrors, watch, formState: { errors } } = useForm<CreatePurchaseOrderFormValues>({
+    defaultValues: {
+      supplier: '',
+      books: [{ edition_id: '', cost_price: 0, title: '', isbn: '', currentStock: 0, quantity: 1 }]
+    }
+  });
 
-  const updateBook = (id: number, field: keyof BookItem, value: string | number) => {
-    setBooks(books.map(book => 
-      book.id === id ? { ...book, [field]: value } : book
-    ));
-  };
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'books'
+  });
 
-  const totalQuantity = books.reduce((sum, book) => sum + Number(book.quantity), 0);
-  const estimatedCost = books.reduce((sum, book) => sum + Number(book.quantity) * 100, 0);
+  const books = watch('books');
+  const supplier = watch('supplier');
 
-  const handleSubmit = () => {
-    console.log('Submitted PO:', { supplier, books });
-    // After successful submission, switch to list view
+  const { data: bookData } = useCheckBookAvailability(bookCheckISBN, triggerBookCheck);
+
+  useEffect(() => {
+    if (bookData && currentCheckIndex !== null && triggerBookCheck) {
+      if (bookData.book?.book_found) {
+        setValue(`books.${currentCheckIndex}.title` as const, bookData.book.title);
+        setValue(`books.${currentCheckIndex}.currentStock` as const, bookData.book.available_quantity);
+        setValue(`books.${currentCheckIndex}.edition_id` as const, bookData.book.edition_id);
+        setValue(`books.${currentCheckIndex}.cost_price` as const, Number(bookData.book.cost_price));
+        clearErrors(`books.${currentCheckIndex}.isbn` as const);
+      } else {
+        setError(`books.${currentCheckIndex}.isbn` as const, { 
+          type: 'manual', 
+          message: 'Book not found' 
+        });
+      }
+      // Reset the check state
+      setTriggerBookCheck(false);
+      setCurrentCheckIndex(null);
+      setBookCheckISBN('');
+    }
+  }, [bookData, currentCheckIndex, triggerBookCheck, setValue, setError, clearErrors]);
+
+    const checkAvailability = useCallback((isbn: string, index: number) => {
+    if (isbn.trim()) {
+      setBookCheckISBN(isbn.trim());
+      setCurrentCheckIndex(index);
+      setTriggerBookCheck(true);
+    }
+  }, []);
+
+  // Updated debounced check
+  const debouncedCheck = useCallback(
+    (index: number) =>
+      debounce((e: React.ChangeEvent<HTMLInputElement>) => {
+        const isbn = e.target.value.trim();
+        if (isbn) {
+          checkAvailability(isbn, index);
+        }
+      }, 300),
+    [checkAvailability]
+  );  
+
+
+  const totalQuantity = watch('books').reduce((sum, book) => sum + Number(book.quantity), 0);
+  const estimatedCost = watch('books').reduce((sum, book) => sum + Number(book.quantity) * (book.cost_price || 0), 0);
+
+  // Update form submission to include supplier name
+  const handlePurchaseOrderSubmit = handleSubmit((data) => {
+    const selectedSupplier = suppliersData?.find((s: any) => s.id === data.supplier);
+    
+    const formattedData = {
+      ...data,
+      supplierName: selectedSupplier?.name || '',
+      supplierContact: selectedSupplier?.contact || '',
+      // Add other supplier details as needed
+    };
+    
+    console.log('Submitted PO:', formattedData);
     setActiveTab('list');
-    // Reset form
-    setSupplier('');
-    setBooks([{ id: 1, title: '', isbn: '', currentStock: 0, quantity: 1 }]);
-  };
+  });
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -152,6 +243,29 @@ const CreatePurchaseOrder = () => {
             poNumber={selectedPO} 
             onClose={() => setSelectedPO(null)} 
           />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Add this near the top of your component, after the hook calls
+  if (suppliersError) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-6 py-8">
+          <Card className="shadow-card-soft border border-border">
+            <CardContent className="p-6 text-center">
+              <div className="text-destructive mb-4">
+                Failed to load suppliers. Please check your connection and try again.
+              </div>
+              <Button 
+                onClick={() => window.location.reload()} 
+                variant="outline"
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </AppLayout>
     );
@@ -206,17 +320,59 @@ const CreatePurchaseOrder = () => {
                     <Label htmlFor="supplier" className="text-sm font-medium text-foreground">
                       Select Supplier <span className="text-accent">*</span>
                     </Label>
-                    <Select value={supplier} onValueChange={setSupplier}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select a supplier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="supplier1">Penguin Random House</SelectItem>
-                        <SelectItem value="supplier2">HarperCollins Publishers</SelectItem>
-                        <SelectItem value="supplier3">Macmillan Publishers</SelectItem>
-                        <SelectItem value="supplier4">Scholastic Inc.</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      name="supplier"
+                      control={control}
+                      rules={{ required: 'Supplier is required' }}
+                      render={({ field }) => (
+                        <>
+                          {suppliersError ? (
+                            <div className="w-full p-3 border border-destructive rounded-md bg-destructive/5 text-destructive text-sm flex items-center justify-between">
+                              <span>Error loading suppliers. Please try again.</span>
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => window.location.reload()}
+                                className="ml-2"
+                              >
+                                Retry
+                              </Button>
+                            </div>
+                          ) : (
+                            <Select onValueChange={field.onChange} value={field.value} disabled={loadingSuppliers}>
+                              <SelectTrigger className={`w-full ${errors.supplier ? 'border-destructive' : ''}`}>
+                                <SelectValue placeholder={
+                                  loadingSuppliers 
+                                    ? "Loading suppliers..." 
+                                    : "Select a supplier"
+                                } />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {loadingSuppliers ? (
+                                  <div className="px-2 py-1 text-sm text-muted-foreground flex items-center">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                                    Loading suppliers...
+                                  </div>
+                                ) : suppliersData && suppliersData.length > 0 ? (
+                                  suppliersData.map((supplier: any) => (
+                                    <SelectItem key={supplier.id} value={supplier.id}>
+                                      {supplier.name}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <div className="px-2 py-1 text-sm text-muted-foreground">
+                                    No suppliers available
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </>
+                      )}
+                    />
+                    {errors.supplier && (
+                      <ErrorMessage message={errors.supplier.message || ''} />
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -245,65 +401,74 @@ const CreatePurchaseOrder = () => {
                       </TableHeader>
                       <TableBody>
                         <AnimatePresence>
-                          {books.map((book, index) => (
-                            <motion.tr
-                              key={book.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: 20 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="border-b border-border hover:bg-muted/30 transition-colors"
-                            >
-                              <TableCell className="p-3">
-                                <Input
-                                  type="text"
-                                  value={book.title}
-                                  onChange={(e) => updateBook(book.id, 'title', e.target.value)}
-                                  placeholder="Enter book title"
-                                  className="w-full min-w-[200px]"
-                                />
-                              </TableCell>
-                              <TableCell className="p-3">
-                                <Input
-                                  type="text"
-                                  value={book.isbn}
-                                  onChange={(e) => updateBook(book.id, 'isbn', e.target.value)}
-                                  placeholder="ISBN"
-                                  className="w-full min-w-[120px] font-mono text-sm"
-                                />
-                              </TableCell>
-                              <TableCell className="p-3">
-                                <Input
-                                  type="number"
-                                  value={book.currentStock}
-                                  onChange={(e) => updateBook(book.id, 'currentStock', parseInt(e.target.value) || 0)}
-                                  placeholder="0"
-                                  className="w-full min-w-[100px] text-center"
-                                  min="0"
-                                />
-                              </TableCell>
-                              <TableCell className="p-3">
-                                <Input
-                                  type="number"
-                                  value={book.quantity}
-                                  onChange={(e) => updateBook(book.id, 'quantity', parseInt(e.target.value) || 1)}
-                                  className="w-full min-w-[100px] text-center font-semibold"
-                                  min="1"
-                                />
-                              </TableCell>
-                              <TableCell className="p-3">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeBook(book.id)}
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  disabled={books.length === 1}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </motion.tr>
-                          ))}
+                          {fields.map((book, index) => {
+                            const debouncedCheckHandler = debouncedCheck(index);
+                            return (
+                              <motion.tr
+                                key={book.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: 20 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="border-b border-border hover:bg-muted/30 transition-colors"
+                              >
+                                <TableCell className="p-3">
+                                  <Input
+                                    type="text"
+                                    disabled
+                                    {...register(`books.${index}.title` as const)}
+                                    placeholder="Enter book title"
+                                    className="w-full min-w-[200px]"
+                                  />
+                                </TableCell>
+                                <TableCell className="p-3">
+                                  <div className='space-y-1'>
+                                    <Input
+                                      type="text"
+                                      {...register(`books.${index}.isbn` as const)}
+                                      onChange={(e) => {
+                                        setValue(`books.${index}.isbn` as const, e.target.value);
+                                        debouncedCheckHandler(e);
+                                      }}
+                                      placeholder="ISBN"
+                                      className="w-full min-w-[120px] font-mono text-sm"
+                                    />
+                                    {errors.books && errors.books[index] && errors.books[index].isbn && (
+                                      <ErrorMessage message={errors.books[index].isbn?.message || '' } />
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="p-3">
+                                  <Input
+                                    type="number"
+                                    disabled
+                                    {...register(`books.${index}.currentStock` as const)}
+                                    placeholder="0"
+                                    className="w-full min-w-[100px] text-center"
+                                    min="0"
+                                  />
+                                </TableCell>
+                                <TableCell className="p-3">
+                                  <Input
+                                    type="number"
+                                    {...register(`books.${index}.quantity` as const)}
+                                    className="w-full min-w-[100px] text-center font-semibold"
+                                    min="1"
+                                  />
+                                </TableCell>
+                                <TableCell className="p-3">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => remove(index)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    disabled={fields.length === 1}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TableCell>
+                              </motion.tr>
+                            )})}
                         </AnimatePresence>
                       </TableBody>
                     </Table>
@@ -317,7 +482,7 @@ const CreatePurchaseOrder = () => {
                   >
                     <Button 
                       variant="outline" 
-                      onClick={addBook}
+                      onClick={() => append({ edition_id: "", cost_price: 0, title: '', isbn: '', currentStock: 0, quantity: 1 })}
                       className="gap-2 border-dashed border-2 hover:border-primary hover:bg-primary/5"
                     >
                       <Plus className="w-4 h-4" />
@@ -380,7 +545,7 @@ const CreatePurchaseOrder = () => {
                 <Button 
                   variant="premium" 
                   size="lg"
-                  onClick={handleSubmit}
+                  onClick={handlePurchaseOrderSubmit}
                   disabled={!supplier || books.some(book => !book.title || !book.isbn)}
                   className="order-1 sm:order-2 min-w-[200px]"
                 >

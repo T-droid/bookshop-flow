@@ -56,6 +56,8 @@ class BookRepository:
             models.Book.title,
             models.Book.author,
             models.BookEdition.isbn_number,
+            models.BookEdition.edition_id,
+            models.Inventory.cost_price,
             (models.Inventory.quantity_on_hand - models.Inventory.quantity_reserved).label('available_quantity'),
             (models.Inventory.cost_price * (1 + models.Inventory.profit) * (1 - models.Inventory.discount)).label('sale_price')
         ).select_from(
@@ -72,6 +74,8 @@ class BookRepository:
         book_data = result.first()
         if book_data:
             return {
+                "edition_id": book_data.edition_id,
+                "cost_price": book_data.cost_price,
                 "title": book_data.title,
                 "author": book_data.author,
                 "isbn_number": book_data.isbn_number,

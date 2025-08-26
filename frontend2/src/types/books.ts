@@ -5,6 +5,8 @@ export interface BookResponse {
 }
 
 export interface BookData {
+  cost_price?: number;
+  edition_id?: string;
   book_found: boolean;
   isbn_number: string;
   title?: string;

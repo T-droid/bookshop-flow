@@ -28,3 +28,10 @@ class SupplierService:
             return ServiceResult(success=True, data=supplier_id)
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
+        
+    async def get_suppliers_by_tenant(self, tenant_id: str, skip: int = 0, limit: int = 100) -> ServiceResult:
+        try:
+            suppliers = await self.repo.list_suppliers(tenant_id, skip, limit)
+            return ServiceResult(success=True, data=suppliers)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
