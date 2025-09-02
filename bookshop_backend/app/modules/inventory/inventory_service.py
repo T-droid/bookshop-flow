@@ -63,3 +63,36 @@ class InventoryService:
                 success=False,
                 error=f"Failed to update inventory quantity: {str(e)}"
             )
+    
+    async def get_tenant_inventory(self, tenant_id: uuid.UUID, limit: int) -> ServiceResult:
+        try:
+            total_value = await self.repository.get_total_inventory_value(tenant_id)
+
+            out_of_stock = await self.repository.get_out_of_stock_inventory_items(tenant_id)
+
+            low_stock = await self.repository.get_low_stock_inventory_items(tenant_id)
+
+            total_items = await self.repository.get_total_unique_inventory_items(tenant_id)
+
+            top_items = await self.repository.get_top_inventory_items_by_date(tenant_id, limit)
+
+            data = {
+                "total_value": total_value,
+                "out_of_stock": out_of_stock,
+                "low_stock": low_stock,
+                "total_items": total_items,
+                "top_items": top_items
+            }
+
+            print("******data:", data)
+
+            return ServiceResult(
+                data=data,
+                success=True
+            )
+
+        except Exception as e:
+            return ServiceResult(
+                error=e,
+                success=False
+            )

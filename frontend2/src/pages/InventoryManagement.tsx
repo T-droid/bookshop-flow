@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Package, 
   TrendingDown, 
@@ -11,6 +11,9 @@ import {
   Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useCSVReader } from "react-papaparse";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AppLayout } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,20 +21,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import apiClient from "@/api/api";
+import { useGetInventory } from '@/hooks/useGetResources';
+import { InventoryResponse, TopInventoryItem, InventoryItem } from '@/types/inventory';
 
-interface InventoryItem {
-  id: string;
+interface Book {
   title: string;
-  isbn: string;
   author: string;
+  isbn: string;
+  publisher: string;
   category: string;
-  currentStock: number;
-  reorderLevel: number;
-  costPrice: number;
-  salePrice: number;
-  supplier: string;
-  lastRestocked: string;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  format: string;
+  quantity: number;
+  cost: number;
+  pages?: number;
+  pub_date?: string;
+  language: string;
+  description?: string;
+  location?: string;
 }
 
 const InventoryManagement = () => {
@@ -39,79 +46,67 @@ const InventoryManagement = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Mock inventory data
-  const [inventory] = useState<InventoryItem[]>([
-    {
-      id: '1',
-      title: 'The Great Gatsby',
-      isbn: '978-0-7432-7356-5',
-      author: 'F. Scott Fitzgerald',
-      category: 'Fiction',
-      currentStock: 25,
-      reorderLevel: 10,
-      costPrice: 800,
-      salePrice: 1200,
-      supplier: 'Penguin Random House',
-      lastRestocked: 'Aug 10, 2025',
-      status: 'In Stock'
+  const { data: inventoryData, isLoading: inventoryLoading, error } = useGetInventory(10)
+  
+  // CSV Upload states
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [csvData, setCsvData] = useState<Book[]>([]);
+  const [csvErrors, setCsvErrors] = useState<{ row: number; message: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { CSVReader } = useCSVReader();
+
+  const { mutateAsync: createNewBooks } = useMutation({
+    mutationFn: async (data: Book[]) => {
+      return apiClient.post("/books", data)
     },
-    {
-      id: '2',
-      title: 'To Kill a Mockingbird',
-      isbn: '978-0-06-112008-4',
-      author: 'Harper Lee',
-      category: 'Fiction',
-      currentStock: 8,
-      reorderLevel: 10,
-      costPrice: 1000,
-      salePrice: 1500,
-      supplier: 'HarperCollins',
-      lastRestocked: 'Aug 5, 2025',
-      status: 'Low Stock'
+    onSuccess: () => {
+      toast.success("Books created successfully")
     },
-    {
-      id: '3',
-      title: '1984',
-      isbn: '978-0-452-28423-4',
-      author: 'George Orwell',
-      category: 'Fiction',
-      currentStock: 0,
-      reorderLevel: 15,
-      costPrice: 900,
-      salePrice: 1350,
-      supplier: 'Penguin Random House',
-      lastRestocked: 'Jul 28, 2025',
-      status: 'Out of Stock'
-    },
-    {
-      id: '4',
-      title: 'Introduction to Programming',
-      isbn: '978-1-234-56789-0',
-      author: 'John Smith',
-      category: 'Technology',
-      currentStock: 45,
-      reorderLevel: 20,
-      costPrice: 1500,
-      salePrice: 2200,
-      supplier: 'Tech Publishers',
-      lastRestocked: 'Aug 12, 2025',
-      status: 'In Stock'
-    },
-    {
-      id: '5',
-      title: 'A Brief History of Time',
-      isbn: '978-0-553-38016-3',
-      author: 'Stephen Hawking',
-      category: 'Science',
-      currentStock: 12,
-      reorderLevel: 8,
-      costPrice: 1200,
-      salePrice: 1800,
-      supplier: 'Bantam Books',
-      lastRestocked: 'Aug 8, 2025',
-      status: 'In Stock'
+    onError: (error) => {
+      toast.error("Failed to create books");
+      setCsvErrors([{ row: 0, message: error.message || 'Unknown error' }]);
+      console.log(error);
     }
-  ]);
+  });
+
+  const [inventory, setInventory] = useState<InventoryItem[]>(inventoryData || []);
+
+  const fetchInventory = async () => {
+      const inventory = await useGetInventory();
+      console.log(inventory)
+    }
+
+  useEffect(() => {
+    if (inventoryData) {
+      
+      // Transform the API data to match your InventoryItem interface
+      const transformedData = (inventoryData as InventoryResponse).top_items.map((item: TopInventoryItem) => ({
+        id: item.isbn_number, // Use ISBN as ID since we don't have an ID field
+        title: item.title,
+        isbn: item.isbn_number,
+        author: item.author,
+        category: item.category_name,
+        currentStock: item.stock,
+        reorderLevel: item.reorder_level,
+        costPrice: item.cost_price,
+        salePrice: item.sale_price,
+        supplier: 'Unknown', // Not provided in API response
+        lastRestocked: new Date().toLocaleDateString(), // Not provided in API response
+        status: getStockStatus(item.stock, item.reorder_level)
+      }));
+      
+      setInventory(transformedData);
+    }
+  }, [inventoryData]);
+
+  // Helper function to determine stock status
+  const getStockStatus = (currentStock: number, reorderLevel: number): 'In Stock' | 'Low Stock' | 'Out of Stock' => {
+    if (currentStock === 0) return 'Out of Stock';
+    if (currentStock <= reorderLevel) return 'Low Stock';
+    return 'In Stock';
+  };
+  
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -126,6 +121,101 @@ const InventoryManagement = () => {
     }
   };
 
+  // Handle CSV upload with react-papaparse
+  const handleCsvUpload = (results: any) => {
+    console.log('Raw CSV results:', results);
+    
+    // Clear previous errors
+    setCsvErrors([]);
+    
+    const data = results.data;
+    console.log('CSV data array:', data);
+    
+    if (!data || data.length === 0) {
+      setCsvErrors([{ row: 0, message: "No data found in CSV file" }]);
+      return;
+    }
+    
+    const parsedBooks: Book[] = data
+      .filter((row: any) => {
+        // Filter out completely empty rows
+        return row && Object.values(row).some(value => 
+          value !== null && value !== undefined && String(value).trim() !== ''
+        );
+      })
+      .map((row: any, index: number) => {
+        console.log(`Processing row ${index + 1}:`, row);
+        
+        const book: Book = {
+          title: String(row.title || '').trim(),
+          author: String(row.author || '').trim(),
+          isbn: String(row.isbn || '').trim(),
+          publisher: String(row.publisher || '').trim(),
+          category: String(row.subject || row.category || 'General').trim(),
+          format: String(row.format || 'Paperback').trim(),
+          quantity: parseInt(String(row.quantity || '0')) || 0,
+          cost: parseFloat(String(row.price_excl || row.cost || '0')) || 0,
+          pages: row.pages ? parseInt(String(row.pages)) : undefined,
+          pub_date: row.publication_date || row.pub_date || undefined,
+          language: String(row.language || 'English').trim(),
+          description: row.description ? String(row.description).trim() : undefined,
+          location: row.location ? String(row.location).trim() : undefined
+        };
+
+        // Client-side validation
+        const errors: string[] = [];
+        if (!book.title) errors.push("Missing title");
+        if (!book.author) errors.push("Missing author");
+        if (!book.isbn) errors.push("Missing ISBN");
+        if (!book.publisher) errors.push("Missing publisher");
+        if (!book.category || book.category === 'General') errors.push("Missing category");
+        if (!book.format) errors.push("Missing format");
+        if (book.quantity <= 0) errors.push("Invalid quantity");
+        if (book.cost < 0) errors.push("Invalid cost");
+
+        // Validate ISBN format (simplified)
+        if (book.isbn && !/^[\d\-X]{10,17}$/.test(book.isbn.replace(/\s/g, ''))) {
+          errors.push("Invalid ISBN format");
+        }
+
+        if (errors.length > 0) {
+          setCsvErrors((prev) => [...prev, { row: index + 1, message: errors.join(", ") }]);
+          return null;
+        }
+        return book;
+      })
+      .filter((book): book is Book => book !== null);
+
+    console.log('Parsed books:', parsedBooks);
+    setCsvData(parsedBooks);
+  };
+
+  // Submit parsed CSV data to backend
+  const handleSubmit = async () => {
+    if (csvData.length === 0) return;
+    setIsLoading(true);
+    try {
+      console.log('Sending data:', csvData);
+      
+      await createNewBooks(csvData)
+      
+      setIsUploadOpen(false);
+      setCsvData([]);
+      setCsvErrors([]);
+      // Refresh inventory data here if needed
+    } catch (error) {
+      console.error("Failed to upload books:", error);
+      setCsvErrors([{ row: 0, message: "Network error: " + (error as Error).message }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle CSV error
+  const handleCsvError = (error: any) => {
+    setCsvErrors([{ row: 0, message: "Failed to parse CSV: " + error.message }]);
+  };
+
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -135,10 +225,27 @@ const InventoryManagement = () => {
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const lowStockItems = inventory.filter(item => item.currentStock <= item.reorderLevel && item.currentStock > 0);
-  const outOfStockItems = inventory.filter(item => item.currentStock === 0);
-  const totalValue = inventory.reduce((sum, item) => sum + (item.currentStock * item.costPrice), 0);
+  const apiData = inventoryData as InventoryResponse;
+  const lowStockItems = apiData?.low_stock || 0;
+  const outOfStockItems = apiData?.out_of_stock || 0;
+  const totalValue = apiData?.total_value || 0;
+  const totalItems = apiData?.total_items || 0;
 
+
+  if (inventoryLoading) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto px-6 py-8 max-w-7xl">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading inventory...</p>
+            </div>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
   return (
     <AppLayout>
       <div className="container mx-auto px-6 py-8 max-w-7xl">
@@ -148,16 +255,198 @@ const InventoryManagement = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-gradient-primary">
-              <Package className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-primary">
+                <Package className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Inventory Management</h1>
+                <p className="text-muted-foreground">Monitor stock levels, manage products, and track inventory value</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Inventory Management</h1>
-              <p className="text-muted-foreground">Monitor stock levels, manage products, and track inventory value</p>
-            </div>
+            <Button variant="premium" size="lg" className="gap-2" onClick={() => setIsUploadOpen(!isUploadOpen)}>
+              <Plus className="w-5 h-5" />
+              Upload Books
+            </Button>
           </div>
         </motion.div>
+
+        {/* CSV Upload Section */}
+        <AnimatePresence>
+          {isUploadOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, y: -20 }}
+              animate={{ opacity: 1, height: "auto", y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -20 }}
+              transition={{ 
+                duration: 0.5, 
+                ease: "easeInOut",
+                height: { duration: 0.4 }
+              }}
+              className="overflow-hidden"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+              >
+                <Card className="p-6 bg-card border border-border shadow-card-soft mb-8">
+                  <motion.h2 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3, duration: 0.3 }}
+                    className="text-xl font-bold text-foreground mb-4"
+                  >
+                    Upload Books via CSV
+                  </motion.h2>
+                  
+                  <motion.p 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.4, duration: 0.3 }}
+                    className="text-muted-foreground mb-4"
+                  >
+                    Upload a CSV file with columns: title, author, isbn, publisher, category (or subject), format, quantity, cost (or price_excl), pages, publication_date, language, description, location.{' '}
+                    <a href="/books_template.csv" download className="text-primary underline">
+                      Download template
+                    </a>
+                  </motion.p>
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.3 }}
+                  >
+                    <CSVReader
+                      onUploadAccepted={handleCsvUpload}
+                      onError={handleCsvError}
+                      config={{
+                        header: true,
+                        skipEmptyLines: true,
+                        dynamicTyping: true,
+                      }}
+                    >
+                      {({ getRootProps, acceptedFile }: any) => (
+                        <div {...getRootProps()} className="border-2 border-dashed border-border p-4 rounded-md mb-4 hover:border-primary transition-colors">
+                          <p className="text-muted-foreground">
+                            {acceptedFile ? acceptedFile.name : "Drag and drop a CSV file or click to select"}
+                          </p>
+                        </div>
+                      )}
+                    </CSVReader>
+                  </motion.div>
+
+                  {/* Preview table */}
+                  <AnimatePresence>
+                    {csvData.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="mb-4"
+                      >
+                        <h3 className="text-lg font-semibold text-foreground">Preview (First 10 Rows)</h3>
+                        <div className="overflow-x-auto max-h-64">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-border">
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Row</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Title</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Author</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">ISBN</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Publisher</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Category</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Format</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Cost</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Quantity</th>
+                                <th className="text-left p-2 text-sm font-medium text-muted-foreground">Language</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {csvData.slice(0, 10).map((book, index) => (
+                                <motion.tr
+                                  key={index}
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: index * 0.1, duration: 0.3 }}
+                                  className="border-b border-border"
+                                >
+                                  <td className="p-2">{index + 1}</td>
+                                  <td className="p-2">{book.title}</td>
+                                  <td className="p-2">{book.author}</td>
+                                  <td className="p-2">{book.isbn}</td>
+                                  <td className="p-2">{book.publisher}</td>
+                                  <td className="p-2">{book.category}</td>
+                                  <td className="p-2">{book.format}</td>
+                                  <td className="p-2">${book.cost.toFixed(2)}</td>
+                                  <td className="p-2">{book.quantity}</td>
+                                  <td className="p-2">{book.language}</td>
+                                </motion.tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Error display */}
+                  <AnimatePresence>
+                    {csvErrors.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.4 }}
+                        className="mb-4"
+                      >
+                        <h3 className="text-lg font-semibold text-destructive">Errors</h3>
+                        <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
+                          {csvErrors.map((error, index) => (
+                            <p key={index} className="text-sm text-destructive">
+                              Row {error.row}: {error.message}
+                            </p>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Action buttons */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6, duration: 0.3 }}
+                    className="flex gap-2"
+                  >
+                    <Button
+                      variant="premium"
+                      onClick={handleSubmit}
+                      disabled={isLoading || csvData.length === 0}
+                      className="transition-all duration-200 hover:scale-105"
+                    >
+                      {isLoading ? "Uploading..." : "Submit"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsUploadOpen(false);
+                        setCsvData([]);
+                        setCsvErrors([]);
+                      }}
+                      disabled={isLoading}
+                      className="transition-all duration-200 hover:scale-105"
+                    >
+                      Cancel
+                    </Button>
+                  </motion.div>
+                </Card>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Inventory Summary Cards */}
         <motion.div
@@ -173,7 +462,7 @@ const InventoryManagement = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Items</p>
-                  <p className="text-2xl font-bold text-foreground">{inventory.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{totalItems}</p>
                 </div>
               </div>
             </CardContent>
@@ -187,7 +476,7 @@ const InventoryManagement = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Low Stock</p>
-                  <p className="text-2xl font-bold text-foreground">{lowStockItems.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{lowStockItems}</p>
                 </div>
               </div>
             </CardContent>
@@ -201,13 +490,13 @@ const InventoryManagement = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Out of Stock</p>
-                  <p className="text-2xl font-bold text-foreground">{outOfStockItems.length}</p>
+                  <p className="text-2xl font-bold text-foreground">{outOfStockItems}</p>
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card>  
 
-          <Card className="shadow-card-soft border border-border bg-gradient-to-br from-green-50 to-green-100">
+         <Card className="shadow-card-soft border border-border bg-gradient-to-br from-green-50 to-green-100">
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-green-500/20">
@@ -263,10 +552,6 @@ const InventoryManagement = () => {
               <Button variant="outline" className="gap-2">
                 <Download className="w-4 h-4" />
                 Export
-              </Button>
-              <Button variant="premium" className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add Item
               </Button>
             </div>
           </CardContent>
