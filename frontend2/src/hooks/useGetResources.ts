@@ -12,3 +12,14 @@ export const useGetSuppliers = (skip = 0, limit = 100) => {
         staleTime: 5 * 60 * 1000, // 5 minutes
     })
 };
+
+export const useGetInventory = (limit: number = 10) => {
+    return useQuery({
+        queryKey: ['inventory', limit],
+        queryFn: async () => {
+            const response = await apiClient.get(`/inventory?limit=${limit}`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    })
+}
