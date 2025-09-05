@@ -26,20 +26,37 @@ class PurchaseOrderItemResponse(BaseModel):
     quantity_ordered: int
     unit_cost: Decimal
     
-class PurchaseOrderResponse(BaseModel):
+class PurchaseOrderListResponse(BaseModel):
     id: uuid.UUID
-    tenant_id: uuid.UUID
-    supplier_id: uuid.UUID
-    order_date: datetime
+    poNumber: Optional[str] = None
+    supplier: str
     status: str
-    total_amount: Optional[Decimal]
-    
+    totalAmount: float
+    totalItems: int
+    createdDate: str
+    expectedDelivery: str
+
     class Config:
-        orm_mode = True
-        json_encoders = {
-            Decimal: float,
-            datetime: lambda v: v.isoformat()
-        }
+        from_attributes = True
+
+class SupplierInfo(BaseModel):
+    id: uuid.UUID
+    name: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+class BooksInfo(BaseModel):
+    id: uuid.UUID
+    title: str
+    isbn: str
+    quantity: int
+    unitPrice: float
+    subtotal: float
+
+class PurchaseOrderDetailsResponse(BaseModel):
+    supplier: SupplierInfo
+    books: List[BooksInfo]
 
 # Internal model for repository
 class PurchaseOrderData(BaseModel):
@@ -47,6 +64,7 @@ class PurchaseOrderData(BaseModel):
     supplier_id: uuid.UUID
     total_amount: Decimal
     status: str = "pending"
+    order_number: Optional[str] = None
     
     class Config:
         json_encoders = {

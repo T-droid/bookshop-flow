@@ -6,9 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { useGetPurchaseOrderDetails } from '@/hooks/useGetResources';
 
 interface PurchaseOrderDetailsProps {
   poNumber?: string;
+  status?: string;
+  createdDate?: string;
+  expectedDelivery?: string;
   onClose?: () => void;
   onApprove?: (poNumber: string) => void;
   onReject?: (poNumber: string) => void;
@@ -16,56 +21,79 @@ interface PurchaseOrderDetailsProps {
 }
 
 const PurchaseOrderDetails = ({ 
-  poNumber = 'A00001', 
+  poNumber = 'A00001',
+  status = 'Pending',
+  createdDate = 'Aug 17, 2025',
+  expectedDelivery = 'Aug 25, 2025',
   onClose, 
   onApprove, 
   onReject, 
   isAdminView = false 
 }: PurchaseOrderDetailsProps) => {
-  // Mock data for demo
-  const poDetails = {
-    poNumber: poNumber,
-    status: 'Pending' as 'Pending' | 'Approved' | 'Rejected' | 'Cancelled',
-    createdDate: 'Aug 17, 2025',
-    expectedDelivery: 'Aug 25, 2025',
-    supplier: {
-      name: 'Penguin Random House',
-      address: '123 Publishers Ave, Nairobi, Kenya',
-      phone: '+254 123 456 789',
-      email: 'orders@penguinrandomhouse.co.ke',
-    },
-    books: [
-      { id: 1, title: 'The Great Gatsby', isbn: '978-0-7432-7356-5', quantity: 10, unitPrice: 1200, subtotal: 12000 },
-      { id: 2, title: 'To Kill a Mockingbird', isbn: '978-0-06-112008-4', quantity: 5, unitPrice: 1500, subtotal: 7500 },
-      { id: 3, title: '1984', isbn: '978-0-452-28423-4', quantity: 8, unitPrice: 1350, subtotal: 10800 },
-    ],
-    approvalHistory: [
+
+  const { data: poDetails, isLoading: loadingPurchaseOrderDetails, error: loadingError } = useGetPurchaseOrderDetails(poNumber);
+  const approvalHistory = [
       { date: 'Aug 17, 2025', time: '10:30 AM', action: 'Purchase Order Created', user: 'John Manager', status: 'created' },
       { date: 'Aug 17, 2025', time: '10:31 AM', action: 'Submitted for Approval', user: 'System', status: 'pending' },
       { date: 'Aug 18, 2025', time: '09:15 AM', action: 'Under Review', user: 'Sarah Approver', status: 'review' },
-    ],
-  };
-
+    ];
   const [userRole, setUserRole] = useState<'Manager' | 'Approver'>(isAdminView ? 'Approver' : 'Manager');
 
   const handleCancel = () => {
-    console.log('PO Cancelled:', poDetails.poNumber);
+    console.log('PO Cancelled:', poNumber);
     onClose?.();
   };
 
   const handleApprove = () => {
-    console.log('PO Approved:', poDetails.poNumber);
-    onApprove?.(poDetails.poNumber);
+    console.log('PO Approved:', poNumber);
+    onApprove?.(poNumber);
     onClose?.();
   };
 
   const handleReject = () => {
-    console.log('PO Rejected:', poDetails.poNumber);
-    onReject?.(poDetails.poNumber);
+    console.log('PO Rejected:', poNumber);
+    onReject?.(poNumber);
     onClose?.();
   };
 
-  const totalAmount = poDetails.books.reduce((sum, book) => sum + book.subtotal, 0);
+  // Show loading state
+  if (loadingPurchaseOrderDetails) {
+    return <LoadingSpinner message="Loading purchase order details..." />;
+  }
+
+  // Show error state
+  if (loadingError) {
+    return (
+      <Card className="shadow-card-soft border border-border">
+        <CardContent className="p-6 text-center">
+          <div className="text-destructive mb-4">
+            Failed to load purchase order details. Please check your connection and try again.
+          </div>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+          >
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show no data state
+  if (!poDetails) {
+    return (
+      <Card className="shadow-card-soft border border-border">
+        <CardContent className="p-6 text-center">
+          <div className="text-muted-foreground">
+            No purchase order details found.
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalAmount = poDetails.books?.reduce((sum, book) => sum + book.subtotal, 0) || 0;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -122,12 +150,12 @@ const PurchaseOrderDetails = ({
               </div>
               <div>
                 <CardTitle className="text-2xl font-bold text-foreground">
-                  Purchase Order #{poDetails.poNumber}
+                  Purchase Order #{poNumber}
                 </CardTitle>
-                <p className="text-muted-foreground">Created on {poDetails.createdDate}</p>
+                <p className="text-muted-foreground">Created on {createdDate}</p>
               </div>
             </div>
-            {getStatusBadge(poDetails.status)}
+            {getStatusBadge(status)}
           </div>
         </CardHeader>
       </Card>
@@ -142,7 +170,7 @@ const PurchaseOrderDetails = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Expected Delivery</p>
-                <p className="text-lg font-semibold text-foreground">{poDetails.expectedDelivery}</p>
+                <p className="text-lg font-semibold text-foreground">{expectedDelivery}</p>
               </div>
             </div>
           </CardContent>
@@ -156,7 +184,7 @@ const PurchaseOrderDetails = ({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Items</p>
-                <p className="text-lg font-semibold text-foreground">{poDetails.books.length} Books</p>
+                <p className="text-lg font-semibold text-foreground">{poDetails.books?.length || 0} Books</p>
               </div>
             </div>
           </CardContent>
@@ -190,21 +218,21 @@ const PurchaseOrderDetails = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{poDetails.supplier.name}</span>
+                <span className="font-medium text-foreground">{poDetails.supplier?.name || 'N/A'}</span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                <span className="text-muted-foreground">{poDetails.supplier.address}</span>
+                <span className="text-muted-foreground">{poDetails.supplier?.address || 'N/A'}</span>
               </div>
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{poDetails.supplier.phone}</span>
+                <span className="text-muted-foreground">{poDetails.supplier?.phone || 'N/A'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{poDetails.supplier.email}</span>
+                <span className="text-muted-foreground">{poDetails.supplier?.email || 'N/A'}</span>
               </div>
             </div>
           </div>
@@ -229,21 +257,29 @@ const PurchaseOrderDetails = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {poDetails.books.map((book, index) => (
-                  <motion.tr
-                    key={book.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="border-b border-border hover:bg-muted/30 transition-colors"
-                  >
-                    <TableCell className="font-medium text-foreground">{book.title}</TableCell>
-                    <TableCell className="font-mono text-sm text-muted-foreground">{book.isbn}</TableCell>
-                    <TableCell className="text-center font-semibold">{book.quantity}</TableCell>
-                    <TableCell className="text-right">Ksh {book.unitPrice.toLocaleString()}</TableCell>
-                    <TableCell className="text-right font-semibold">Ksh {book.subtotal.toLocaleString()}</TableCell>
-                  </motion.tr>
-                ))}
+                {poDetails.books && poDetails.books.length > 0 ? (
+                  poDetails.books.map((book, index) => (
+                    <motion.tr
+                      key={book.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="border-b border-border hover:bg-muted/30 transition-colors"
+                    >
+                      <TableCell className="font-medium text-foreground">{book.title}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">{book.isbn}</TableCell>
+                      <TableCell className="text-center font-semibold">{book.quantity}</TableCell>
+                      <TableCell className="text-right">Ksh {book.unitPrice.toLocaleString()}</TableCell>
+                      <TableCell className="text-right font-semibold">Ksh {book.subtotal.toLocaleString()}</TableCell>
+                    </motion.tr>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No books found for this purchase order.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
@@ -252,7 +288,9 @@ const PurchaseOrderDetails = ({
           
           <div className="flex justify-end">
             <div className="text-right space-y-1">
-              <p className="text-sm text-muted-foreground">Total Quantity: {poDetails.books.reduce((sum, book) => sum + book.quantity, 0)}</p>
+              <p className="text-sm text-muted-foreground">
+                Total Quantity: {poDetails.books?.reduce((sum, book) => sum + book.quantity, 0) || 0}
+              </p>
               <p className="text-lg font-bold text-foreground">Total Amount: Ksh {totalAmount.toLocaleString()}</p>
             </div>
           </div>
@@ -266,29 +304,35 @@ const PurchaseOrderDetails = ({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {poDetails.approvalHistory.map((event, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="flex items-start gap-4"
-              >
-                <div className="flex flex-col items-center">
-                  {getTimelineIcon(event.status)}
-                  {index < poDetails.approvalHistory.length - 1 && (
-                    <div className="w-px h-8 bg-border mt-2" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-foreground">{event.action}</span>
-                    <span className="text-sm text-muted-foreground">by {event.user}</span>
+            {approvalHistory && approvalHistory.length > 0 ? (
+              approvalHistory.map((event, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start gap-4"
+                >
+                  <div className="flex flex-col items-center">
+                    {getTimelineIcon(event.status)}
+                    {index < approvalHistory.length - 1 && (
+                      <div className="w-px h-8 bg-border mt-2" />
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{event.date} at {event.time}</p>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-foreground">{event.action}</span>
+                      <span className="text-sm text-muted-foreground">by {event.user}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{event.date} at {event.time}</p>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                No approval history available.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

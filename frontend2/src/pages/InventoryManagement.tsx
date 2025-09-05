@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import apiClient from "@/api/api";
 import { useGetInventory } from '@/hooks/useGetResources';
 import { InventoryResponse, TopInventoryItem, InventoryItem } from '@/types/inventory';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 
 interface Book {
   title: string;
@@ -235,14 +236,7 @@ const InventoryManagement = () => {
   if (inventoryLoading) {
     return (
       <AppLayout>
-        <div className="container mx-auto px-6 py-8 max-w-7xl">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading inventory...</p>
-            </div>
-          </div>
-        </div>
+        <LoadingSpinner message="Loading inventory..." />
       </AppLayout>
     );
   }

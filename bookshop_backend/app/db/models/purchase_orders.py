@@ -1,5 +1,5 @@
 from sqlmodel import Field, SQLModel, Relationship
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List, TYPE_CHECKING
 import uuid
 from decimal import Decimal
@@ -13,7 +13,9 @@ class PurchaseOrder(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", nullable=False)
     supplier_id: uuid.UUID = Field(foreign_key="supplier.id", nullable=False)
+    order_number: str = Field(max_length=20, nullable=False, index=True, unique=True)  # Format: A0001, A0002, etc.
     order_date: datetime = Field(default_factory=datetime.now, index=True)
+    expected_delivery_date: datetime = Field(default_factory=lambda: datetime.now() + timedelta(days=5), index=True)
     status: str = Field(max_length=20, default="pending")  # pending, received, cancelled, partial, completed
     total_amount: Optional[Decimal] = Field(default=None, max_digits=12, decimal_places=2, ge=0)
     created_at: datetime = Field(default_factory=datetime.now, index=True)
@@ -25,4 +27,4 @@ class PurchaseOrder(SQLModel, table=True):
     purchase_order_items: List["PurchaseOrderItems"] = Relationship(back_populates="purchase_order", cascade_delete=True)
 
     def __repr__(self):
-        return f"PurchaseOrder(id={self.id}, tenant_id={self.tenant_id}, supplier_id={self.supplier_id}, status={self.status})"
+        return f"PurchaseOrder(id={self.id}, order_number={self.order_number}, tenant_id={self.tenant_id}, supplier_id={self.supplier_id}, status={self.status})"

@@ -175,6 +175,7 @@ class Permission(str, Enum):
     MANAGE_SETTINGS = "manage:settings"
     MANAGE_TENANTS = "manage:tenants"
     MANAGE_PURCHASE_ORDERS = "manage:purchase_orders"
+    VIEW_PURCHASE_ORDERS = "view:purchase_orders"
 
 
 # Role-based permissions mapping
@@ -188,7 +189,7 @@ ROLE_PERMISSIONS = {
         Permission.READ_INVENTORY, Permission.WRITE_INVENTORY,
         Permission.READ_SUPPLIERS, Permission.WRITE_SUPPLIERS,
         Permission.MANAGE_USERS, Permission.MANAGE_SETTINGS,
-        Permission.MANAGE_PURCHASE_ORDERS
+        Permission.MANAGE_PURCHASE_ORDERS, Permission.VIEW_PURCHASE_ORDERS
     ],
     UserRole.MANAGER: [
         Permission.READ_BOOKS, Permission.WRITE_BOOKS,
@@ -196,17 +197,19 @@ ROLE_PERMISSIONS = {
         Permission.READ_INVENTORY, Permission.WRITE_INVENTORY,
         Permission.READ_SUPPLIERS, Permission.WRITE_SUPPLIERS,
         Permission.MANAGE_SETTINGS,
-        Permission.MANAGE_PURCHASE_ORDERS
+        Permission.MANAGE_PURCHASE_ORDERS, Permission.VIEW_PURCHASE_ORDERS
     ],
     UserRole.CASHIER: [
         Permission.READ_BOOKS,
         Permission.READ_SALES, Permission.WRITE_SALES,
-        Permission.READ_INVENTORY
+        Permission.READ_INVENTORY,
+        Permission.VIEW_PURCHASE_ORDERS
     ],
     UserRole.VIEWER: [
         Permission.READ_BOOKS,
         Permission.READ_SALES,
         Permission.READ_INVENTORY,
+        Permission.VIEW_PURCHASE_ORDERS,
         Permission.READ_SUPPLIERS
     ],
     UserRole.EDITOR: [
