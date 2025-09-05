@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Plus, Trash2, Package, Receipt, DollarSign, Eye, Search, Filter, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '@/components/AppLayout';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,33 +17,10 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import debounce from 'lodash.debounce';
 import { BookData } from '@/types/books';
 import { ErrorMessage } from '@/components/ValidationInputError';
-import { useGetSuppliers } from '@/hooks/useGetResources';
+import { useGetPurchaseOrders, useGetSuppliers } from '@/hooks/useGetResources';
 import { useCreatePurchaseOrder } from '@/hooks/useCreateResource';
+import { PurchaseOrder, BookItem, CreatePurchaseOrderFormValues } from '@/types/purchaseOrder';
 
-interface BookItem {
-  edition_id: string;
-  cost_price: number;
-  title: string;
-  isbn: string;
-  currentStock: number;
-  quantity: number;
-}
-
-interface PurchaseOrder {
-  id: string;
-  poNumber: string;
-  supplier: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Cancelled';
-  totalAmount: number;
-  totalItems: number;
-  createdDate: string;
-  expectedDelivery: string;
-}
-
-interface CreatePurchaseOrderFormValues {
-  supplier: string;
-  books: BookItem[];
-}
 
 const CreatePurchaseOrder = () => {
   const [activeTab, setActiveTab] = useState('create');
@@ -60,48 +38,48 @@ const CreatePurchaseOrder = () => {
   // ]);
 
   // Mock existing purchase orders
-  const [purchaseOrders] = useState<PurchaseOrder[]>([
-    {
-      id: '1',
-      poNumber: 'A00001',
-      supplier: 'Penguin Random House',
-      status: 'Pending',
-      totalAmount: 30300,
-      totalItems: 23,
-      createdDate: 'Aug 17, 2025',
-      expectedDelivery: 'Aug 25, 2025'
-    },
-    {
-      id: '2',
-      poNumber: 'A00002',
-      supplier: 'HarperCollins Publishers',
-      status: 'Approved',
-      totalAmount: 45600,
-      totalItems: 35,
-      createdDate: 'Aug 15, 2025',
-      expectedDelivery: 'Aug 23, 2025'
-    },
-    {
-      id: '3',
-      poNumber: 'A00003',
-      supplier: 'Macmillan Publishers',
-      status: 'Rejected',
-      totalAmount: 28900,
-      totalItems: 18,
-      createdDate: 'Aug 14, 2025',
-      expectedDelivery: 'Aug 22, 2025'
-    },
-    {
-      id: '4',
-      poNumber: 'A00004',
-      supplier: 'Scholastic Inc.',
-      status: 'Pending',
-      totalAmount: 52100,
-      totalItems: 42,
-      createdDate: 'Aug 16, 2025',
-      expectedDelivery: 'Aug 24, 2025'
-    }
-  ]);
+  // const [purchaseOrders] = useState<PurchaseOrder[]>([
+  //   {
+  //     id: '1',
+  //     poNumber: 'A00001',
+  //     supplier: 'Penguin Random House',
+  //     status: 'Pending',
+  //     totalAmount: 30300,
+  //     totalItems: 23,
+  //     createdDate: 'Aug 17, 2025',
+  //     expectedDelivery: 'Aug 25, 2025'
+  //   },
+  //   {
+  //     id: '2',
+  //     poNumber: 'A00002',
+  //     supplier: 'HarperCollins Publishers',
+  //     status: 'Approved',
+  //     totalAmount: 45600,
+  //     totalItems: 35,
+  //     createdDate: 'Aug 15, 2025',
+  //     expectedDelivery: 'Aug 23, 2025'
+  //   },
+  //   {
+  //     id: '3',
+  //     poNumber: 'A00003',
+  //     supplier: 'Macmillan Publishers',
+  //     status: 'Rejected',
+  //     totalAmount: 28900,
+  //     totalItems: 18,
+  //     createdDate: 'Aug 14, 2025',
+  //     expectedDelivery: 'Aug 22, 2025'
+  //   },
+  //   {
+  //     id: '4',
+  //     poNumber: 'A00004',
+  //     supplier: 'Scholastic Inc.',
+  //     status: 'Pending',
+  //     totalAmount: 52100,
+  //     totalItems: 42,
+  //     createdDate: 'Aug 16, 2025',
+  //     expectedDelivery: 'Aug 24, 2025'
+  //   }
+  // ]);
 
   // const addBook = () => {
   //   setBooks([...books, { id: books.length + 1, title: '', isbn: '', currentStock: 0, quantity: 1 }]);
@@ -118,6 +96,7 @@ const CreatePurchaseOrder = () => {
   // };
 
   const { data: suppliersData, isLoading: loadingSuppliers, error: suppliersError } = useGetSuppliers();
+  const { data: purchaseOrdersData, isLoading: loadingPurchaseOrders, error: purchaseOrdersError } = useGetPurchaseOrders();
 
   // Handle supplier selection with actual supplier data
   const getSelectedSupplierName = () => {
@@ -217,27 +196,30 @@ const CreatePurchaseOrder = () => {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Pending':
+      case 'pending':
         return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Pending</Badge>;
-      case 'Approved':
+      case 'approved':
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Approved</Badge>;
-      case 'Rejected':
+      case 'rejected':
         return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejected</Badge>;
-      case 'Cancelled':
+      case 'cancelled':
         return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const filteredOrders = purchaseOrders.filter(order => {
+  const filteredOrders = purchaseOrdersData?.filter(order => {
     const matchesSearch = order.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          order.supplier.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
-  });
+  }) || [];
 
   if (selectedPO) {
+    // Find the selected purchase order details
+    const selectedOrder = purchaseOrdersData?.find(order => order.poNumber === selectedPO);
+    
     return (
       <AppLayout>
         <div className="container mx-auto px-6 py-8">
@@ -251,7 +233,10 @@ const CreatePurchaseOrder = () => {
             </Button>
           </div>
           <PurchaseOrderDetails 
-            poNumber={selectedPO} 
+            poNumber={selectedPO}
+            status={selectedOrder?.status}
+            createdDate={selectedOrder?.createdDate}
+            expectedDelivery={selectedOrder?.expectedDelivery}
             onClose={() => setSelectedPO(null)} 
           />
         </div>
@@ -598,74 +583,92 @@ const CreatePurchaseOrder = () => {
             </Card>
 
             {/* Purchase Orders List */}
-            <Card className="shadow-card-soft border border-border">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-foreground">Purchase Orders</CardTitle>
-                  <Badge variant="outline" className="text-sm">
-                    {filteredOrders.length} order{filteredOrders.length !== 1 ? 's' : ''}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-hidden rounded-md border border-border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="font-semibold text-foreground">PO Number</TableHead>
-                        <TableHead className="font-semibold text-foreground">Supplier</TableHead>
-                        <TableHead className="font-semibold text-foreground">Status</TableHead>
-                        <TableHead className="font-semibold text-foreground">Items</TableHead>
-                        <TableHead className="font-semibold text-foreground">Total Amount</TableHead>
-                        <TableHead className="font-semibold text-foreground">Created</TableHead>
-                        <TableHead className="font-semibold text-foreground">Expected Delivery</TableHead>
-                        <TableHead className="font-semibold text-foreground w-20">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <AnimatePresence>
-                        {filteredOrders.map((order, index) => (
-                          <motion.tr
-                            key={order.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="border-b border-border hover:bg-muted/30 transition-colors"
-                          >
-                            <TableCell className="font-mono font-medium text-foreground">
-                              {order.poNumber}
-                            </TableCell>
-                            <TableCell className="text-foreground">{order.supplier}</TableCell>
-                            <TableCell>{getStatusBadge(order.status)}</TableCell>
-                            <TableCell className="text-center">{order.totalItems}</TableCell>
-                            <TableCell className="font-semibold">Ksh {order.totalAmount.toLocaleString()}</TableCell>
-                            <TableCell className="text-muted-foreground">{order.createdDate}</TableCell>
-                            <TableCell className="text-muted-foreground">{order.expectedDelivery}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setSelectedPO(order.poNumber)}
-                                className="h-8 w-8"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                  
-                  {filteredOrders.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No purchase orders found matching your criteria.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {loadingPurchaseOrders ? (
+              <LoadingSpinner message="Loading purchase orders..." />
+            ) : purchaseOrdersError ? (
+              <Card className="shadow-card-soft border border-border">
+                <CardContent className="p-6 text-center">
+                  <div className="text-destructive mb-4">
+                    Failed to load purchase orders. Please check your connection and try again.
+                  </div>
+                  <Button 
+                    onClick={() => window.location.reload()} 
+                    variant="outline"
+                  >
+                    Retry
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="shadow-card-soft border border-border">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-foreground">Purchase Orders</CardTitle>
+                    <Badge variant="outline" className="text-sm">
+                      {filteredOrders?.length || 0} order{(filteredOrders?.length || 0) !== 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-hidden rounded-md border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold text-foreground">PO Number</TableHead>
+                          <TableHead className="font-semibold text-foreground">Supplier</TableHead>
+                          <TableHead className="font-semibold text-foreground">Status</TableHead>
+                          <TableHead className="font-semibold text-foreground">Items</TableHead>
+                          <TableHead className="font-semibold text-foreground">Total Amount</TableHead>
+                          <TableHead className="font-semibold text-foreground">Created</TableHead>
+                          <TableHead className="font-semibold text-foreground">Expected Delivery</TableHead>
+                          <TableHead className="font-semibold text-foreground w-20">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <AnimatePresence>
+                          {filteredOrders?.map((order, index) => (
+                            <motion.tr
+                              key={order.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 20 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="border-b border-border hover:bg-muted/30 transition-colors"
+                            >
+                              <TableCell className="font-mono font-medium text-foreground">
+                                {order.poNumber}
+                              </TableCell>
+                              <TableCell className="text-foreground">{order.supplier}</TableCell>
+                              <TableCell>{getStatusBadge(order.status)}</TableCell>
+                              <TableCell className="text-center">{order.totalItems}</TableCell>
+                              <TableCell className="font-semibold">Ksh {order.totalAmount.toLocaleString()}</TableCell>
+                              <TableCell className="text-muted-foreground">{order.createdDate}</TableCell>
+                              <TableCell className="text-muted-foreground">{order.expectedDelivery}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setSelectedPO(order.poNumber)}
+                                  className="h-8 w-8"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
+                    
+                    {(!filteredOrders || filteredOrders.length === 0) && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No purchase orders found matching your criteria.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
