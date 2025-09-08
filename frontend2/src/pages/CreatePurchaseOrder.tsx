@@ -20,92 +20,20 @@ import { ErrorMessage } from '@/components/ValidationInputError';
 import { useGetPurchaseOrders, useGetSuppliers } from '@/hooks/useGetResources';
 import { useCreatePurchaseOrder } from '@/hooks/useCreateResource';
 import { PurchaseOrder, BookItem, CreatePurchaseOrderFormValues } from '@/types/purchaseOrder';
+import PurchaseOrderList from '@/components/PurchaseOrderList';
 
 
 const CreatePurchaseOrder = () => {
   const [activeTab, setActiveTab] = useState('create');
   const [selectedPO, setSelectedPO] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [bookCheckISBN, setBookCheckISBN] = useState('');
   const [triggerBookCheck, setTriggerBookCheck] = useState(false);
   const [currentCheckIndex, setCurrentCheckIndex] = useState<number | null>(null);
 
-  // Create PO state
-  // const [supplier, setSupplier] = useState('');
-  // const [books, setBooks] = useState<BookItem[]>([
-  //   { id: "", title: '', isbn: '', currentStock: 0, quantity: 0 }
-  // ]);
-
-  // Mock existing purchase orders
-  // const [purchaseOrders] = useState<PurchaseOrder[]>([
-  //   {
-  //     id: '1',
-  //     poNumber: 'A00001',
-  //     supplier: 'Penguin Random House',
-  //     status: 'Pending',
-  //     totalAmount: 30300,
-  //     totalItems: 23,
-  //     createdDate: 'Aug 17, 2025',
-  //     expectedDelivery: 'Aug 25, 2025'
-  //   },
-  //   {
-  //     id: '2',
-  //     poNumber: 'A00002',
-  //     supplier: 'HarperCollins Publishers',
-  //     status: 'Approved',
-  //     totalAmount: 45600,
-  //     totalItems: 35,
-  //     createdDate: 'Aug 15, 2025',
-  //     expectedDelivery: 'Aug 23, 2025'
-  //   },
-  //   {
-  //     id: '3',
-  //     poNumber: 'A00003',
-  //     supplier: 'Macmillan Publishers',
-  //     status: 'Rejected',
-  //     totalAmount: 28900,
-  //     totalItems: 18,
-  //     createdDate: 'Aug 14, 2025',
-  //     expectedDelivery: 'Aug 22, 2025'
-  //   },
-  //   {
-  //     id: '4',
-  //     poNumber: 'A00004',
-  //     supplier: 'Scholastic Inc.',
-  //     status: 'Pending',
-  //     totalAmount: 52100,
-  //     totalItems: 42,
-  //     createdDate: 'Aug 16, 2025',
-  //     expectedDelivery: 'Aug 24, 2025'
-  //   }
-  // ]);
-
-  // const addBook = () => {
-  //   setBooks([...books, { id: books.length + 1, title: '', isbn: '', currentStock: 0, quantity: 1 }]);
-  // };
-
-  // const removeBook = (id: number) => {
-  //   setBooks(books.filter(book => book.id !== id));
-  // };
-
-  // const updateBook = (id: number, field: keyof BookItem, value: string | number) => {
-  //   setBooks(books.map(book => 
-  //     book.id === id ? { ...book, [field]: value } : book
-  //   ));
-  // };
 
   const { data: suppliersData, isLoading: loadingSuppliers, error: suppliersError } = useGetSuppliers();
   const { data: purchaseOrdersData, isLoading: loadingPurchaseOrders, error: purchaseOrdersError } = useGetPurchaseOrders();
 
-  // Handle supplier selection with actual supplier data
-  const getSelectedSupplierName = () => {
-    const selectedSupplierId = watch('supplier');
-    if (!selectedSupplierId || !suppliersData) return '';
-    
-    const supplier = suppliersData.find((s: any) => s.id === selectedSupplierId);
-    return supplier ? supplier.name : '';
-  };
 
   const { register, handleSubmit, control, setValue, setError, clearErrors, watch, formState: { errors } } = useForm<CreatePurchaseOrderFormValues>({
     defaultValues: {
@@ -194,28 +122,6 @@ const CreatePurchaseOrder = () => {
     setActiveTab('list');
   });
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">Pending</Badge>;
-      case 'approved':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Approved</Badge>;
-      case 'rejected':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rejected</Badge>;
-      case 'cancelled':
-        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const filteredOrders = purchaseOrdersData?.filter(order => {
-    const matchesSearch = order.poNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.supplier.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || order.status.toLowerCase() === statusFilter.toLowerCase();
-    return matchesSearch && matchesStatus;
-  }) || [];
-
   if (selectedPO) {
     // Find the selected purchase order details
     const selectedOrder = purchaseOrdersData?.find(order => order.poNumber === selectedPO);
@@ -244,7 +150,6 @@ const CreatePurchaseOrder = () => {
     );
   }
 
-  // Add this near the top of your component, after the hook calls
   if (suppliersError) {
     return (
       <AppLayout>
@@ -551,125 +456,13 @@ const CreatePurchaseOrder = () => {
             </motion.div>
           </TabsContent>
 
-          <TabsContent value="list" className="space-y-6">
-            {/* Search and Filter */}
-            <Card className="shadow-card-soft border border-border">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search by PO number or supplier..."
-                      className="pl-10"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full md:w-[200px]">
-                      <Filter className="w-4 h-4 mr-2" />
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+          <PurchaseOrderList
+            onSelectPO={setSelectedPO}
+            isLoading={loadingPurchaseOrders}
+            error={purchaseOrdersError}
+            data={purchaseOrdersData}
+          />
 
-            {/* Purchase Orders List */}
-            {loadingPurchaseOrders ? (
-              <LoadingSpinner message="Loading purchase orders..." />
-            ) : purchaseOrdersError ? (
-              <Card className="shadow-card-soft border border-border">
-                <CardContent className="p-6 text-center">
-                  <div className="text-destructive mb-4">
-                    Failed to load purchase orders. Please check your connection and try again.
-                  </div>
-                  <Button 
-                    onClick={() => window.location.reload()} 
-                    variant="outline"
-                  >
-                    Retry
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="shadow-card-soft border border-border">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-semibold text-foreground">Purchase Orders</CardTitle>
-                    <Badge variant="outline" className="text-sm">
-                      {filteredOrders?.length || 0} order{(filteredOrders?.length || 0) !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-hidden rounded-md border border-border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/50">
-                          <TableHead className="font-semibold text-foreground">PO Number</TableHead>
-                          <TableHead className="font-semibold text-foreground">Supplier</TableHead>
-                          <TableHead className="font-semibold text-foreground">Status</TableHead>
-                          <TableHead className="font-semibold text-foreground">Items</TableHead>
-                          <TableHead className="font-semibold text-foreground">Total Amount</TableHead>
-                          <TableHead className="font-semibold text-foreground">Created</TableHead>
-                          <TableHead className="font-semibold text-foreground">Expected Delivery</TableHead>
-                          <TableHead className="font-semibold text-foreground w-20">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <AnimatePresence>
-                          {filteredOrders?.map((order, index) => (
-                            <motion.tr
-                              key={order.id}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: 20 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="border-b border-border hover:bg-muted/30 transition-colors"
-                            >
-                              <TableCell className="font-mono font-medium text-foreground">
-                                {order.poNumber}
-                              </TableCell>
-                              <TableCell className="text-foreground">{order.supplier}</TableCell>
-                              <TableCell>{getStatusBadge(order.status)}</TableCell>
-                              <TableCell className="text-center">{order.totalItems}</TableCell>
-                              <TableCell className="font-semibold">Ksh {order.totalAmount.toLocaleString()}</TableCell>
-                              <TableCell className="text-muted-foreground">{order.createdDate}</TableCell>
-                              <TableCell className="text-muted-foreground">{order.expectedDelivery}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setSelectedPO(order.poNumber)}
-                                  className="h-8 w-8"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </TableCell>
-                            </motion.tr>
-                          ))}
-                        </AnimatePresence>
-                      </TableBody>
-                    </Table>
-                    
-                    {(!filteredOrders || filteredOrders.length === 0) && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No purchase orders found matching your criteria.
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
