@@ -1,9 +1,9 @@
-from ....db.session import SessionDep
+from ...db.session import SessionDep
 from .sales_repository import SalesRepository
 from .sales_model import SalesRequestBody, Sales, SaleItem
-from ....utils.result import ServiceResult
+from ...utils.result import ServiceResult
 import uuid
-from ...inventory.inventory_service import InventoryService
+from ..inventory.inventory_service import InventoryService
 
 class SalesService:
     def __init__(self, db: SessionDep):

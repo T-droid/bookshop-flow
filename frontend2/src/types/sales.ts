@@ -25,7 +25,7 @@ export interface SaleItem {
   discount_amount?: number;
 }
 
-export interface SalesRequestBody {
+export interface CreateSaleData {
   customer?: Customer;
   sale_items: SaleItem[];
   payment: Payment;

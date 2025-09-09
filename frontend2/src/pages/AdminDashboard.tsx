@@ -28,17 +28,10 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
 import { useNotifications } from '@/components/NotificationProvider';
+import { useGetPurchaseOrders } from '@/hooks/useGetResources';
+import { useUpdatePurchaseOrderStatus } from '@/hooks/useCreateResource';
+import { useQueryClient } from '@tanstack/react-query';
 
-interface PendingPO {
-  id: string;
-  poNumber: string;
-  supplier: string;
-  totalAmount: number;
-  totalItems: number;
-  createdDate: string;
-  requestedBy: string;
-  priority: 'High' | 'Medium' | 'Low';
-}
 
 interface SalesData {
   id: string;
@@ -60,45 +53,12 @@ interface AnalyticsData {
 
 const AdminDashboard = () => {
   const { addNotification } = useNotifications();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedPO, setSelectedPO] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState('30days');
-
-  // Mock data for pending purchase orders
-  const [pendingPOs, setPendingPOs] = useState<PendingPO[]>([
-    {
-      id: '1',
-      poNumber: 'A00001',
-      supplier: 'Penguin Random House',
-      totalAmount: 30300,
-      totalItems: 23,
-      createdDate: 'Aug 17, 2025',
-      requestedBy: 'John Manager',
-      priority: 'High'
-    },
-    {
-      id: '2',
-      poNumber: 'A00004',
-      supplier: 'Scholastic Inc.',
-      totalAmount: 52100,
-      totalItems: 42,
-      createdDate: 'Aug 16, 2025',
-      requestedBy: 'Sarah Store',
-      priority: 'Medium'
-    },
-    {
-      id: '3',
-      poNumber: 'A00005',
-      supplier: 'Oxford University Press',
-      totalAmount: 18750,
-      totalItems: 15,
-      createdDate: 'Aug 15, 2025',
-      requestedBy: 'Mike Branch',
-      priority: 'Low'
-    }
-  ]);
 
   // Mock sales data
   const [salesData] = useState<SalesData[]>([
@@ -163,32 +123,70 @@ const AdminDashboard = () => {
     ]
   });
 
-  const handleApprovePO = (poId: string) => {
-    const po = pendingPOs.find(p => p.id === poId);
-    setPendingPOs(pendingPOs.filter(po => po.id !== poId));
-    // In real app, make API call to approve PO
-    console.log('Approved PO:', poId);
-    // Show success notification
-    addNotification({
-      type: 'success',
-      title: 'Purchase Order Approved',
-      message: `PO ${po?.poNumber} has been approved successfully.`,
-      duration: 4000
-    });
+  const { data: purchaseOrdersData, isLoading: loadingPurchaseOrders, error: purchaseOrdersError } = useGetPurchaseOrders();
+  const updatePurchaseOrderStatus = useUpdatePurchaseOrderStatus();
+
+  // Function to calculate priority based on dates
+  const calculatePriority = (createdDate: string, expectedDelivery: string): 'High' | 'Medium' | 'Low' => {
+    const created = new Date(createdDate);
+    const delivery = new Date(expectedDelivery);
+    const daysDifference = Math.ceil((delivery.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysDifference <= 3) return 'High';
+    if (daysDifference <= 7) return 'Medium';
+    return 'Low';
   };
 
-  const handleRejectPO = (poId: string) => {
-    const po = pendingPOs.find(p => p.id === poId);
-    setPendingPOs(pendingPOs.filter(po => po.id !== poId));
-    // In real app, make API call to reject PO
-    console.log('Rejected PO:', poId);
-    // Show rejection notification
-    addNotification({
-      type: 'error',
-      title: 'Purchase Order Rejected',
-      message: `PO ${po?.poNumber} has been rejected.`,
-      duration: 4000
-    });
+  const handleApprovePO = async (poId: string) => {
+    const po = purchaseOrdersData?.find(p => p.id === poId);
+    if (!po) return;
+
+    try {
+      await updatePurchaseOrderStatus.mutateAsync({
+        poId: poId,
+        status: 'approved'
+      });
+      
+      // Refresh the purchase orders data
+      queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] });
+      
+      // Show success notification
+      addNotification({
+        type: 'success',
+        title: 'Purchase Order Approved',
+        message: `PO ${po.poNumber} has been approved successfully.`,
+        duration: 4000
+      });
+    } catch (error) {
+      // Error notification is handled by the mutation hook
+      console.error('Failed to approve purchase order:', error);
+    }
+  };
+
+  const handleRejectPO = async (poId: string) => {
+    const po = purchaseOrdersData?.find(p => p.id === poId);
+    if (!po) return;
+
+    try {
+      await updatePurchaseOrderStatus.mutateAsync({
+        poId: poId,
+        status: 'rejected'
+      });
+      
+      // Refresh the purchase orders data
+      queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] });
+      
+      // Show rejection notification
+      addNotification({
+        type: 'error',
+        title: 'Purchase Order Rejected',
+        message: `PO ${po.poNumber} has been rejected.`,
+        duration: 4000
+      });
+    } catch (error) {
+      // Error notification is handled by the mutation hook
+      console.error('Failed to reject purchase order:', error);
+    }
   };
 
   const getPriorityBadge = (priority: string) => {
@@ -240,12 +238,18 @@ const AdminDashboard = () => {
             poNumber={selectedPO} 
             onClose={() => setSelectedPO(null)}
             onApprove={(poNumber) => {
-              handleApprovePO(pendingPOs.find(po => po.poNumber === poNumber)?.id || '');
-              setSelectedPO(null);
+              const po = purchaseOrdersData?.find(po => po.poNumber === poNumber);
+              if (po) {
+                handleApprovePO(po.id);
+                setSelectedPO(null);
+              }
             }}
             onReject={(poNumber) => {
-              handleRejectPO(pendingPOs.find(po => po.poNumber === poNumber)?.id || '');
-              setSelectedPO(null);
+              const po = purchaseOrdersData?.find(po => po.poNumber === poNumber);
+              if (po) {
+                handleRejectPO(po.id);
+                setSelectedPO(null);
+              }
             }}
             isAdminView={true}
           />
@@ -350,8 +354,8 @@ const AdminDashboard = () => {
                       <AlertTriangle className="w-5 h-5 text-amber-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">Pending POs</p>
-                      <p className="text-2xl font-bold text-foreground">{pendingPOs.length}</p>
+                      <p className="text-sm text-muted-foreground">Total POs</p>
+                      <p className="text-2xl font-bold text-foreground">{purchaseOrdersData?.length || 0}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -370,14 +374,14 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {pendingPOs.slice(0, 3).map((po) => (
+                    {purchaseOrdersData?.slice(0, 3).map((po) => (
                       <div key={po.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                         <div>
                           <p className="font-medium text-foreground">{po.poNumber}</p>
                           <p className="text-sm text-muted-foreground">{po.supplier} • Ksh {po.totalAmount.toLocaleString()}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {getPriorityBadge(po.priority)}
+                          {getPriorityBadge(calculatePriority(po.createdDate, po.expectedDelivery))}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -439,87 +443,105 @@ const AdminDashboard = () => {
             <Card className="shadow-card-soft border border-border">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-foreground">Pending Purchase Orders</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-foreground">Purchase Orders</CardTitle>
                   <Badge variant="outline" className="text-sm">
-                    {pendingPOs.length} pending approval{pendingPOs.length !== 1 ? 's' : ''}
+                    {purchaseOrdersData?.length || 0} order{(purchaseOrdersData?.length || 0) !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-hidden rounded-md border border-border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="font-semibold text-foreground">PO Number</TableHead>
-                        <TableHead className="font-semibold text-foreground">Supplier</TableHead>
-                        <TableHead className="font-semibold text-foreground">Requested By</TableHead>
-                        <TableHead className="font-semibold text-foreground">Items</TableHead>
-                        <TableHead className="font-semibold text-foreground">Total Amount</TableHead>
-                        <TableHead className="font-semibold text-foreground">Priority</TableHead>
-                        <TableHead className="font-semibold text-foreground">Created</TableHead>
-                        <TableHead className="font-semibold text-foreground w-32">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <AnimatePresence>
-                        {pendingPOs.map((po, index) => (
-                          <motion.tr
-                            key={po.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="border-b border-border hover:bg-muted/30 transition-colors"
-                          >
-                            <TableCell className="font-mono font-medium text-foreground">
-                              {po.poNumber}
-                            </TableCell>
-                            <TableCell className="text-foreground">{po.supplier}</TableCell>
-                            <TableCell className="text-foreground">{po.requestedBy}</TableCell>
-                            <TableCell className="text-center">{po.totalItems}</TableCell>
-                            <TableCell className="font-semibold">Ksh {po.totalAmount.toLocaleString()}</TableCell>
-                            <TableCell>{getPriorityBadge(po.priority)}</TableCell>
-                            <TableCell className="text-muted-foreground">{po.createdDate}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setSelectedPO(po.poNumber)}
-                                  className="h-8 w-8"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleApprovePO(po.id)}
-                                  className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                >
-                                  <CheckCircle className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRejectPO(po.id)}
-                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <XCircle className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                  
-                  {pendingPOs.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No pending purchase orders requiring approval.
-                    </div>
-                  )}
-                </div>
+                {loadingPurchaseOrders ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading purchase orders...</p>
+                  </div>
+                ) : purchaseOrdersError ? (
+                  <div className="text-center py-8">
+                    <p className="text-destructive mb-4">Failed to load purchase orders</p>
+                    <Button onClick={() => window.location.reload()} variant="outline">
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-md border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold text-foreground">PO Number</TableHead>
+                          <TableHead className="font-semibold text-foreground">Supplier</TableHead>
+                          <TableHead className="font-semibold text-foreground">Status</TableHead>
+                          <TableHead className="font-semibold text-foreground">Items</TableHead>
+                          <TableHead className="font-semibold text-foreground">Total Amount</TableHead>
+                          <TableHead className="font-semibold text-foreground">Priority</TableHead>
+                          <TableHead className="font-semibold text-foreground">Created</TableHead>
+                          <TableHead className="font-semibold text-foreground w-32">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <AnimatePresence>
+                          {purchaseOrdersData?.map((po, index) => (
+                            <motion.tr
+                              key={po.id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 20 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="border-b border-border hover:bg-muted/30 transition-colors"
+                            >
+                              <TableCell className="font-mono font-medium text-foreground">
+                                {po.poNumber || 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-foreground">{po.supplier}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                  {po.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-center">{po.totalItems}</TableCell>
+                              <TableCell className="font-semibold">Ksh {po.totalAmount.toLocaleString()}</TableCell>
+                              <TableCell>{getPriorityBadge(calculatePriority(po.createdDate, po.expectedDelivery))}</TableCell>
+                              <TableCell className="text-muted-foreground">{po.createdDate}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setSelectedPO(po.poNumber)}
+                                    className="h-8 w-8"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleApprovePO(po.id)}
+                                    className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRejectPO(po.id)}
+                                    className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
+                    
+                    {(!purchaseOrdersData || purchaseOrdersData.length === 0) && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        No purchase orders found.
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

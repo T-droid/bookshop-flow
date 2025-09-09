@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Body, Response, Path, Query, Depends
 from typing import List, Optional, Annotated
-from ....db.session import SessionDep
+from ...db.session import SessionDep
 from .sales_model import SalesRequestBody, SaleResponse
 from .sales_service import SalesService
-from ....utils.auth import (
+from ...utils.auth import (
     get_current_user,
     require_role,
     require_permission,

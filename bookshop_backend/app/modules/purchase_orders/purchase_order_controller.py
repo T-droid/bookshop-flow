@@ -62,3 +62,20 @@ async def get_purchase_order_details(
             detail=result.error
         )
     return result.data
+
+@router.patch("/{po_id}/status")
+async def update_purchase_order_status(
+    po_id: str,
+    db: SessionDep,
+    new_status: str = Body(..., embed=True, description="New status for the purchase order"),
+    user: CurrentUser = Depends(require_permission(Permission.MANAGE_PURCHASE_ORDERS))
+):
+    """Update the status of a purchase order (approve, reject, etc.)"""
+    service = PurchaseOrderService(db)
+    result = await service.update_purchase_order_status(po_id=po_id, tenant_id=user.tenant_id, new_status=new_status)
+    if not result.success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=result.error
+        )
+    return result.data

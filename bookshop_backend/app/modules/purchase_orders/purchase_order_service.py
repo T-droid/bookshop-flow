@@ -106,31 +106,42 @@ class PurchaseOrderService:
                 error=f"Failed to get purchase order details: {e}",
                 success=False
             )
-    
-    # async def get_purchase_orders(self, tenant_id: uuid.UUID, limit: int = 100) -> ServiceResult:
-    #     try:
-    #         print(f"Service: Getting purchase orders for tenant {tenant_id}")
-            
-    #         # Get purchase orders from repository
-    #         purchase_orders = await self.repository.get_purchase_orders_by_tenant(tenant_id, limit)
-    #         print(f"Repository returned {len(purchase_orders)} purchase orders")
-            
-    #         # Convert to response format
-    #         response_data = []
-    #         for po in purchase_orders:
-    #             po_response = PurchaseOrderResponse.model_validate(po)
-    #             response_data.append(po_response)
-            
-    #         return ServiceResult(
-    #             data=response_data,
-    #             success=True
-    #         )
-            
-    #     except Exception as e:
-    #         print(f"Service error: {str(e)}")
-    #         import traceback
-    #         traceback.print_exc()
-    #         return ServiceResult(
-    #             error=f"Failed to get purchase orders: {str(e)}",
-    #             success=False
-    #         )
+
+    async def update_purchase_order_status(self, po_id: str, tenant_id: str, new_status: str) -> ServiceResult:
+        """Update the status of a purchase order"""
+        try:
+            # Validate status
+            valid_statuses = ["pending", "approved", "rejected", "received", "cancelled", "partial", "completed"]
+            if new_status not in valid_statuses:
+                return ServiceResult(
+                    error=f"Invalid status. Must be one of: {', '.join(valid_statuses)}",
+                    success=False
+                )
+
+            # Check if the purchase order exists
+            existing_po = await self.repository.get_purchase_order_by_id(po_id, tenant_id)
+            if not existing_po:
+                return ServiceResult(
+                    error="Purchase order not found",
+                    success=False
+                )
+
+            # Update the purchase order status
+            existing_po.status = new_status
+            result = await self.repository.save(existing_po)
+            if not result:
+                return ServiceResult(
+                    error="Purchase order update failed",
+                    success=False
+                )
+
+            return ServiceResult(
+                data=result,
+                message=f"Purchase order status updated to {new_status} successfully",
+                success=True
+            )
+        except Exception as e:
+            return ServiceResult(
+                error=f"Failed to update purchase order status: {e}",
+                success=False
+            )

@@ -367,7 +367,7 @@ const PurchaseOrderDetails = ({
           </Button>
         )}
         
-        {userRole === 'Approver' && (
+        {userRole === 'Approver' && status === "pending" && (
           <>
             <Button 
               variant="outline" 

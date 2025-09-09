@@ -36,6 +36,15 @@ class PurchaseOrderRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+    
+    async def get_purchase_order_by_id(self, po_id: uuid.UUID, tenant_id: uuid.UUID) -> Optional[models.PurchaseOrder]:
+        """Get purchase order by ID"""
+        stmt = select(models.PurchaseOrder).where(
+            models.PurchaseOrder.id == po_id,
+            models.PurchaseOrder.tenant_id == tenant_id
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def get_purchase_order_supplier(self, po_number: str, tenant_id: uuid.UUID) -> Optional[models.PurchaseOrder]:
         """Get purchase order along with supplier details by ID"""

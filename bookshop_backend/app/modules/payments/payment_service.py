@@ -1,4 +1,4 @@
-from ....db.session import SessionDep
+from ...db.session import SessionDep
 
 class PaymentService:
     def __init__(self, db_session: SessionDep):

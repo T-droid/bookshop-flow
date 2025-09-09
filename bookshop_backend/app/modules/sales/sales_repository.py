@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 import uuid
 from .sales_model import Sales, SaleItem
-from ....db import models
+from ...db import models
 from typing import Union
 
 
