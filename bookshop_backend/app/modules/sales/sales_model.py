@@ -51,18 +51,17 @@ class SalesRequestBody(BaseModel):
     sale_status: str = Field(default="completed", max_length=20)
     sale_date: datetime = Field(default_factory=datetime.now)
 
+# Updated SaleResponse to match the required shape
 class SaleResponse(BaseModel):
     sale_id: uuid.UUID
-    tenant_id: uuid.UUID
-    customer: Optional[Customer]
-    sale_items: List[SaleItem]
-    subtotal: Decimal
-    total: Decimal
-    tax: Optional[Decimal]
-    discount: Optional[Decimal]
-    sale_date: datetime
+    date: datetime
+    total_amount: Decimal
+    sale_status: str
+    customer_name: str
+    customer_phone: Optional[str] = None
+    customer_email: Optional[str] = None
     payment_method: str
-    status: str
+    items: int  # Count of sale items
 
     class Config:
         from_attributes = True

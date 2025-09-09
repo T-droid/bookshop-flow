@@ -28,20 +28,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
 import { useNotifications } from '@/components/NotificationProvider';
-import { useGetPurchaseOrders } from '@/hooks/useGetResources';
+import { useGetPurchaseOrders, useGetSales } from '@/hooks/useGetResources';
 import { useUpdatePurchaseOrderStatus } from '@/hooks/useCreateResource';
 import { useQueryClient } from '@tanstack/react-query';
+import { SaleResponse } from '@/types/sales';
 
-
-interface SalesData {
-  id: string;
-  date: string;
-  customer: string;
-  items: number;
-  amount: number;
-  paymentMethod: 'Cash' | 'Card' | 'Mobile Money';
-  status: 'Completed' | 'Pending' | 'Refunded';
-}
 
 interface AnalyticsData {
   totalSales: number;
@@ -61,44 +52,46 @@ const AdminDashboard = () => {
   const [dateRange, setDateRange] = useState('30days');
 
   // Mock sales data
-  const [salesData] = useState<SalesData[]>([
-    {
-      id: '1',
-      date: 'Aug 18, 2025',
-      customer: 'Alice Johnson',
-      items: 3,
-      amount: 2850,
-      paymentMethod: 'Card',
-      status: 'Completed'
-    },
-    {
-      id: '2',
-      date: 'Aug 18, 2025',
-      customer: 'Bob Smith',
-      items: 1,
-      amount: 1200,
-      paymentMethod: 'Cash',
-      status: 'Completed'
-    },
-    {
-      id: '3',
-      date: 'Aug 17, 2025',
-      customer: 'Carol Wilson',
-      items: 5,
-      amount: 4750,
-      paymentMethod: 'Mobile Money',
-      status: 'Completed'
-    },
-    {
-      id: '4',
-      date: 'Aug 17, 2025',
-      customer: 'David Brown',
-      items: 2,
-      amount: 1850,
-      paymentMethod: 'Card',
-      status: 'Pending'
-    }
-  ]);
+  // const [salesData] = useState<SalesData[]>([
+  //   {
+  //     id: '1',
+  //     date: 'Aug 18, 2025',
+  //     customer: 'Alice Johnson',
+  //     items: 3,
+  //     amount: 2850,
+  //     paymentMethod: 'Card',
+  //     status: 'Completed'
+  //   },
+  //   {
+  //     id: '2',
+  //     date: 'Aug 18, 2025',
+  //     customer: 'Bob Smith',
+  //     items: 1,
+  //     amount: 1200,
+  //     paymentMethod: 'Cash',
+  //     status: 'Completed'
+  //   },
+  //   {
+  //     id: '3',
+  //     date: 'Aug 17, 2025',
+  //     customer: 'Carol Wilson',
+  //     items: 5,
+  //     amount: 4750,
+  //     paymentMethod: 'Mobile Money',
+  //     status: 'Completed'
+  //   },
+  //   {
+  //     id: '4',
+  //     date: 'Aug 17, 2025',
+  //     customer: 'David Brown',
+  //     items: 2,
+  //     amount: 1850,
+  //     paymentMethod: 'Card',
+  //     status: 'Pending'
+  //   }
+  // ]);
+
+  const { data: salesData, error: salesError, isLoading: loadingSales } = useGetSales(40)
 
   // Mock analytics data
   const [analytics] = useState<AnalyticsData>({
@@ -215,9 +208,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const filteredSales = salesData.filter(sale => {
-    const matchesSearch = sale.customer.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || sale.status.toLowerCase() === statusFilter.toLowerCase();
+  const filteredSales = (salesData || []).filter(sale => {
+    const matchesSearch = sale.customer_name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || sale.sale_status.toLowerCase() === statusFilter.toLowerCase();
     return matchesSearch && matchesStatus;
   });
 
@@ -412,24 +405,44 @@ const AdminDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {salesData.slice(0, 3).map((sale) => (
-                      <div key={sale.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                        <div>
-                          <p className="font-medium text-foreground">{sale.customer}</p>
-                          <p className="text-sm text-muted-foreground">{sale.date} • {sale.items} items</p>
+                  {loadingSales ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
+                      <p className="text-sm text-muted-foreground">Loading sales...</p>
+                    </div>
+                  ) : salesError ? (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-destructive mb-2">Failed to load sales</p>
+                      <Button size="sm" variant="outline" onClick={() => window.location.reload()}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {(salesData || []).slice(0, 3).map((sale) => (
+                        <div key={sale.sale_id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <div>
+                            <p className="font-medium text-foreground">{sale.customer_name}</p>
+                            <p className="text-sm text-muted-foreground">{sale.date} • {sale.items} items</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold text-foreground">Ksh {sale.total_amount.toLocaleString()}</p>
+                            <p className="text-sm text-muted-foreground">{sale.payment_method}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-foreground">Ksh {sale.amount.toLocaleString()}</p>
-                          <p className="text-sm text-muted-foreground">{sale.paymentMethod}</p>
+                      ))}
+                      {(!salesData || salesData.length === 0) && (
+                        <div className="text-center py-4 text-muted-foreground">
+                          <p className="text-sm">No recent sales found</p>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      )}
+                    </div>
+                  )}
                   <Button 
                     variant="outline" 
                     className="w-full mt-4"
                     onClick={() => setActiveTab('sales')}
+                    disabled={loadingSales}
                   >
                     View All Sales
                   </Button>
@@ -558,9 +571,10 @@ const AdminDashboard = () => {
                       className="pl-10"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      disabled={loadingSales}
                     />
                   </div>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <Select value={statusFilter} onValueChange={setStatusFilter} disabled={loadingSales}>
                     <SelectTrigger className="w-full md:w-[200px]">
                       <Filter className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Filter by status" />
@@ -572,7 +586,7 @@ const AdminDashboard = () => {
                       <SelectItem value="refunded">Refunded</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Select value={dateRange} onValueChange={setDateRange}>
+                  <Select value={dateRange} onValueChange={setDateRange} disabled={loadingSales}>
                     <SelectTrigger className="w-full md:w-[200px]">
                       <Calendar className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Date range" />
@@ -584,7 +598,7 @@ const AdminDashboard = () => {
                       <SelectItem value="1year">Last year</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-2" disabled={loadingSales || !salesData?.length}>
                     <Download className="w-4 h-4" />
                     Export
                   </Button>
@@ -598,52 +612,83 @@ const AdminDashboard = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-semibold text-foreground">Sales Transactions</CardTitle>
                   <Badge variant="outline" className="text-sm">
-                    {filteredSales.length} transaction{filteredSales.length !== 1 ? 's' : ''}
+                    {loadingSales ? '...' : `${filteredSales.length} transaction${filteredSales.length !== 1 ? 's' : ''}`}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-hidden rounded-md border border-border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="font-semibold text-foreground">Date</TableHead>
-                        <TableHead className="font-semibold text-foreground">Customer</TableHead>
-                        <TableHead className="font-semibold text-foreground">Items</TableHead>
-                        <TableHead className="font-semibold text-foreground">Amount</TableHead>
-                        <TableHead className="font-semibold text-foreground">Payment Method</TableHead>
-                        <TableHead className="font-semibold text-foreground">Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <AnimatePresence>
-                        {filteredSales.map((sale, index) => (
-                          <motion.tr
-                            key={sale.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="border-b border-border hover:bg-muted/30 transition-colors"
-                          >
-                            <TableCell className="text-muted-foreground">{sale.date}</TableCell>
-                            <TableCell className="font-medium text-foreground">{sale.customer}</TableCell>
-                            <TableCell className="text-center">{sale.items}</TableCell>
-                            <TableCell className="font-semibold">Ksh {sale.amount.toLocaleString()}</TableCell>
-                            <TableCell className="text-foreground">{sale.paymentMethod}</TableCell>
-                            <TableCell>{getStatusBadge(sale.status)}</TableCell>
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                  
-                  {filteredSales.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No sales transactions found matching your criteria.
+                {loadingSales ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading sales transactions...</p>
+                  </div>
+                ) : salesError ? (
+                  <div className="text-center py-12">
+                    <div className="text-destructive mb-4">
+                      <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-lg font-medium">Failed to load sales</p>
+                      <p className="text-sm text-muted-foreground">
+                        {salesError?.message || 'An error occurred while fetching sales data'}
+                      </p>
                     </div>
-                  )}
-                </div>
+                    <Button onClick={() => window.location.reload()} variant="outline">
+                      <Download className="w-4 h-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden rounded-md border border-border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="font-semibold text-foreground">Date</TableHead>
+                          <TableHead className="font-semibold text-foreground">Customer</TableHead>
+                          <TableHead className="font-semibold text-foreground">Items</TableHead>
+                          <TableHead className="font-semibold text-foreground">Amount</TableHead>
+                          <TableHead className="font-semibold text-foreground">Payment Method</TableHead>
+                          <TableHead className="font-semibold text-foreground">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <AnimatePresence>
+                          {filteredSales.map((sale, index) => (
+                            <motion.tr
+                              key={sale.sale_id}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 20 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="border-b border-border hover:bg-muted/30 transition-colors"
+                            >
+                              <TableCell className="text-muted-foreground">{sale.date}</TableCell>
+                              <TableCell className="font-medium text-foreground">{sale.customer_name}</TableCell>
+                              <TableCell className="text-center">{sale.items}</TableCell>
+                              <TableCell className="font-semibold">Ksh {sale.total_amount.toLocaleString()}</TableCell>
+                              <TableCell className="text-foreground">{sale.payment_method}</TableCell>
+                              <TableCell>{getStatusBadge(sale.sale_status)}</TableCell>
+                            </motion.tr>
+                          ))}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
+                    
+                    {(!salesData || salesData.length === 0) && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg font-medium">No sales found</p>
+                        <p className="text-sm">Start making sales to see transactions here</p>
+                      </div>
+                    )}
+                    
+                    {salesData && salesData.length > 0 && filteredSales.length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p className="text-lg font-medium">No sales match your criteria</p>
+                        <p className="text-sm">Try adjusting your search or filter settings</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
