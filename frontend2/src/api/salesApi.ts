@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { SalesRequestBody, CreateSaleResponse, SaleResponse } from '@/types/sales';
+import { CreateSaleResponse, SaleResponse, CreateSaleData } from '@/types/sales';
 
 // For now, we'll use a hardcoded tenant ID until we can get it from the user context
 // In a real implementation, this should come from the authenticated user's data
@@ -9,18 +9,18 @@ const INVENTORY_ID = 'b0f77a47-03b0-495a-ba8c-d52b48da68e6'
 
 export const salesApi = {
   // Create a new sale
-  createSale: async (saleData: SalesRequestBody): Promise<CreateSaleResponse> => {
+  createSale: async (saleData: CreateSaleData): Promise<CreateSaleResponse> => {
     saleData.sale_items.forEach(item => {
       item.edition_id = EDITION_ID;
       item.inventory_id = INVENTORY_ID;
     });
-    const response = await apiClient.post(`/tenants/${TENANT_ID}/sales`, saleData);
+    const response = await apiClient.post(`/sales`, saleData);
     return response.data;
   },
 
   // Get a specific sale by ID
   getSale: async (saleId: string): Promise<SaleResponse> => {
-    const response = await apiClient.get(`/tenants/${TENANT_ID}/sales/${saleId}`);
+    const response = await apiClient.get(`/sales/${saleId}`);
     return response.data;
   },
 

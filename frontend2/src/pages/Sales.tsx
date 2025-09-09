@@ -5,18 +5,15 @@ import {
   Trash2, 
   Receipt, 
   Scan, 
-  DollarSign, 
   CreditCard, 
   Smartphone, 
   Clock, 
   User, 
   Settings, 
-  Pause, 
-  Play,
+  Pause,
   X,
   Minus,
   Search,
-  AlertTriangle,
   CheckCircle,
   QrCode,
   Camera,
@@ -25,26 +22,25 @@ import {
   Banknote,
   Loader2
 } from "lucide-react";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import debounce from 'lodash.debounce';
 import { useCheckBookAvailability } from '@/hooks/useCheckAvailability';
-import { FieldError, set, useForm } from 'react-hook-form';
-import { useQuery } from '@tanstack/react-query';
-import { BookData, BookResponse, CartItem } from '@/types/books';
+import { FieldError, useForm } from 'react-hook-form';
+import { BookData, CartItem } from '@/types/books';
 import { ErrorMessage, SuccessMessage } from '@/components/ValidationInputError';
 import { salesApi } from '@/api/salesApi';
-import { SalesRequestBody, Customer, Payment, SaleItem } from '@/types/sales';
+import { CreateSaleData, Customer, Payment, SaleItem } from '@/types/sales';
 import { toast } from 'sonner';
+import { useCreateSale } from '@/hooks/useCreateResource';
 
 
 
@@ -97,42 +93,6 @@ export default function Sales() {
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const isbnInputRef = useRef<HTMLInputElement>(null);
-
-  // Mock data for available books
-  // const [availableBooks] = useState([
-  //   {
-  //     isbn: '9780743273565',
-  //     title: 'The Great Gatsby',
-  //     author: 'F. Scott Fitzgerald',
-  //     unitPrice: 1200,
-  //     stockLevel: 15,
-  //     vatRate: 16
-  //   },
-  //   {
-  //     isbn: '9780061120084',
-  //     title: 'To Kill a Mockingbird',
-  //     author: 'Harper Lee',
-  //     unitPrice: 1500,
-  //     stockLevel: 3,
-  //     vatRate: 16
-  //   },
-  //   {
-  //     isbn: '9780452284234',
-  //     title: '1984',
-  //     author: 'George Orwell',
-  //     unitPrice: 1350,
-  //     stockLevel: 0,
-  //     vatRate: 16
-  //   },
-  //   {
-  //     isbn: '9780134685991',
-  //     title: 'Effective Java',
-  //     author: 'Joshua Bloch',
-  //     unitPrice: 4500,
-  //     stockLevel: 8,
-  //     vatRate: 16
-  //   }
-  // ]);
   const [availableBook, setAvailableBook] = useState<BookData | null>(null);
 
   // Update time every second
@@ -190,21 +150,6 @@ export default function Sales() {
     return sum + (lineTotal * item.vatRate) / 100;
   }, 0);
   const cartTotal = cartSubtotal + cartVAT - cartDiscount;
-
-  // Mock books data for search
-  // const mockBooks = availableBooks.map(book => ({
-  //   id: book.isbn,
-  //   isbn: book.isbn,
-  //   title: book.title,
-  //   author: book.author,
-  //   price: book.unitPrice,
-  //   stockLevel: book.stockLevel
-  // }));
-
-  // Functions
-  // const findBookByISBN = (isbn: string) => {
-  //   return availableBooks.find(book => book.isbn === isbn);
-  // };
 
   const addItemByISBN = () => {
     if (!availableBook || !availableBook.book_found) return;
@@ -304,6 +249,8 @@ export default function Sales() {
     });
   };
 
+  const { mutateAsync: createSale, isPending} = useCreateSale();
+
   const processCashPayment = async () => {
     if (cashReceived >= cartTotal && cartItems.length > 0) {
       setIsProcessingSale(true);
@@ -339,7 +286,7 @@ export default function Sales() {
         };
 
         // Prepare sale data
-        const saleData: SalesRequestBody = {
+        const saleData: CreateSaleData = {
           customer,
           sale_items: saleItems,
           payment,
@@ -348,7 +295,7 @@ export default function Sales() {
         };
 
         // Create the sale via API
-        const result = await salesApi.createSale(saleData);
+        const result = await createSale(saleData);
         
         toast.success(`Sale completed successfully! Sale ID: ${result.sale_id}`);
         console.log('Sale created:', result);
@@ -416,7 +363,7 @@ export default function Sales() {
       };
 
       // Prepare sale data
-      const saleData: SalesRequestBody = {
+      const saleData: CreateSaleData = {
         customer,
         sale_items: saleItems,
         payment,
@@ -479,7 +426,7 @@ export default function Sales() {
       };
 
       // Prepare sale data
-      const saleData: SalesRequestBody = {
+      const saleData: CreateSaleData = {
         customer,
         sale_items: saleItems,
         payment,

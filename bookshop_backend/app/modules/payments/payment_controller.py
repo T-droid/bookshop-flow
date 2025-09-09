@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Body, Response, Path, Depends
-from ....db.session import SessionDep
-from ....utils.auth import (
+from ...db.session import SessionDep
+from ...utils.auth import (
     get_current_user,
     require_role,
     require_permission,

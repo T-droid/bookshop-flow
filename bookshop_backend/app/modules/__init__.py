@@ -7,6 +7,8 @@ from .suppliers.supplier_controller import router as supplier_router
 from .tax.tax_controller import router as tax_router
 from .purchase_orders.purchase_order_controller import router as purchase_order_router
 from .inventory.inventory_controller import router as inventory_router
+from .sales.sales_controller import router as sales_router
+from .payments.payment_controller import router as payment_router
 
 
 api_router = APIRouter()
@@ -64,5 +66,20 @@ api_router.include_router(
     inventory_router,
     prefix="/inventory",
     tags=["Inventory"],
+    responses={404: {"description": "Not found"}},
+)
+
+
+api_router.include_router(
+    sales_router,
+    tags=["Sales"],
+    prefix="/sales",
+    responses={404: {"description": "Not found"}},
+)
+
+api_router.include_router(
+    payment_router,
+    prefix="/payments",
+    tags=["Payments"],
     responses={404: {"description": "Not found"}},
 )

@@ -1,5 +1,6 @@
 import apiClient from "@/api/api";
 import { PurchaseOrder, PurchaseOrderDetails } from "@/types/purchaseOrder";
+import { SaleResponse } from "@/types/sales";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 
 
@@ -45,5 +46,17 @@ export const useGetPurchaseOrderDetails = (po_id: string): UseQueryResult<Purcha
         },
         staleTime: 5 * 60 * 1000, // 5 minutes
         enabled: !!po_id,
+    })
+}
+
+
+export const useGetSales = (limit: number = 100): UseQueryResult<SaleResponse[] | null, Error> => {
+    return useQuery<SaleResponse[] | null, Error>({
+        queryKey: ["sales"],
+        queryFn: async () => {
+            const response = await apiClient.get(`/sales?limit=${limit}`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000
     })
 }

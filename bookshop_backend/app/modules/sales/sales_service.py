@@ -1,9 +1,10 @@
-from ....db.session import SessionDep
+from ...db.session import SessionDep
 from .sales_repository import SalesRepository
-from .sales_model import SalesRequestBody, Sales, SaleItem
-from ....utils.result import ServiceResult
+from .sales_model import SalesRequestBody, Sales, SaleItem, SaleResponse
+from ...utils.result import ServiceResult
 import uuid
-from ...inventory.inventory_service import InventoryService
+import traceback
+from ..inventory.inventory_service import InventoryService
 
 class SalesService:
     def __init__(self, db: SessionDep):
@@ -58,4 +59,46 @@ class SalesService:
             return ServiceResult(
                 success=False,
                 error=f"Failed to create sale: {str(e)}"
+            )
+        
+    async def get_sales_by_tenant(
+        self, 
+        tenant_id: uuid.UUID,
+        date_from: str = None,
+        date_to: str = None,
+        payment: str = None,
+        status: str = None,
+        limit: int = 100
+    ) -> ServiceResult:
+        """Get all sales for a tenant with optional filters"""
+        try:            
+            sales = await self.repository.get_sales_by_tenant(
+                tenant_id=tenant_id,
+                date_from=date_from,
+                date_to=date_to,
+                payment=payment,
+                status=status,
+                limit=limit
+            )
+            
+            # Validate each sale response format
+            validated_sales = []
+            for i, sale in enumerate(sales or []):
+                try:
+                    validated_sale = SaleResponse.model_validate(sale)
+                    validated_sales.append(validated_sale.model_dump())
+                except Exception as validation_error:
+                    print(f"Error validating sale {i+1} with data {sale}: {validation_error}")
+                    continue            
+            return ServiceResult(
+                success=True,
+                data=validated_sales
+            )
+        except Exception as e:
+            print(f"Service error in get_sales_by_tenant: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return ServiceResult(
+                success=False,
+                error=f"Failed to retrieve sales: {str(e)}"
             )
