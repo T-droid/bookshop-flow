@@ -73,6 +73,35 @@ async def get_suppliers(
             detail=f"Internal server error: {str(e)}"
         )
 
+@router.get("/dashboard", status_code=status.HTTP_200_OK)
+async def get_supplier_dashboard(
+    db: SessionDep,
+    user: CurrentUser = Depends(require_permission(Permission.READ_SUPPLIERS))
+):
+    """
+    Get supplier dashboard statistics.
+    Requires: Read suppliers permission
+    """
+    try:
+        service = SupplierService(db)
+        result = await service.get_supplier_dashboard(
+            tenant_id=user.tenant_id
+        )
+
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.error
+            )
+
+        return result.data
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
+
 @router.get("/{supplier_id}", status_code=status.HTTP_200_OK)
 async def get_supplier(
     supplier_id: str,

@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 import uuid
 from .book_model import BookCreateBase, BookEditionCreateBase
 from ...db import models
@@ -83,7 +83,11 @@ class BookRepository:
                 "sale_price": book_data.sale_price
             }
         return None
-        
+
+    async def count_books(self) -> int:
+        stmt = select(func.count()).select_from(models.Book)
+        result = await self.db.execute(stmt)
+        return result.scalar()
 
     async def save(self, model: Union[models.Book, models.BookEdition, models.Category]) -> None:
         self.db.add(model)
