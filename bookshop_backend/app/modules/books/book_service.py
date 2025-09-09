@@ -92,3 +92,17 @@ class BookService:
                 )
         except Exception as e:
             raise Exception(f"Database error while searching for book: {str(e)}")
+        
+    async def get_total_books_count(self, tenant_id: uuid.UUID) -> ServiceResult:
+        try:
+            total_books = await self.repository.count_books(tenant_id)
+            return ServiceResult(
+                success=True,
+                data={"total_books": total_books},
+                message="Total books count retrieved successfully"
+            )
+        except Exception as e:
+            return ServiceResult(
+                success=False,
+                error=f"Failed to retrieve total books count: {str(e)}"
+            )

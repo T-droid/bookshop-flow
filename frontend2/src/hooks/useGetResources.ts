@@ -1,6 +1,7 @@
 import apiClient from "@/api/api";
 import { PurchaseOrder, PurchaseOrderDetails } from "@/types/purchaseOrder";
 import { SaleResponse } from "@/types/sales";
+import { SupplierDashboardResponse } from "@/types/supplier";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 
 
@@ -55,6 +56,17 @@ export const useGetSales = (limit: number = 100): UseQueryResult<SaleResponse[] 
         queryKey: ["sales"],
         queryFn: async () => {
             const response = await apiClient.get(`/sales?limit=${limit}`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000
+    })
+}
+
+export const useGetSupplierDashboard = (): UseQueryResult<SupplierDashboardResponse | null, Error> =>  {
+    return useQuery<SupplierDashboardResponse | null, Error>({
+        queryKey: ['supplierDashboard'],
+        queryFn: async () => {
+            const response = await apiClient.get(`/suppliers/dashboard`);
             return response.data;
         },
         staleTime: 5 * 60 * 1000

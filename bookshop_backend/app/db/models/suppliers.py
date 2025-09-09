@@ -14,6 +14,7 @@ class Supplier(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     tenant_id: uuid.UUID = Field(foreign_key="tenant.id", ondelete="CASCADE")
     name: str = Field(max_length=255, index=True, nullable=False)
+    contact_person: Optional[str] = Field(default=None, max_length=255, index=True)
     contact_info: Optional[str] = Field(default=None, max_length=500)
     phone_number: Optional[str] = Field(default=None, max_length=20)
     address: Optional[str] = Field(default=None, max_length=500)
