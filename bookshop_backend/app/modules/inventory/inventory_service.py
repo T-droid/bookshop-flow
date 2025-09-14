@@ -84,8 +84,6 @@ class InventoryService:
                 "top_items": top_items
             }
 
-            print("******data:", data)
-
             return ServiceResult(
                 data=data,
                 success=True

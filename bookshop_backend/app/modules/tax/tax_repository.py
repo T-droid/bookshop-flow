@@ -42,10 +42,18 @@ class TaxRepository:
         return result.scalar_one_or_none()
 
     async def list_tax_rates_by_tenant(self, tenant_id: uuid.UUID) -> List[models.TaxRates]:
-        result = await self.db.execute(
-            select(models.TaxRates).where(models.TaxRates.tenant_id == tenant_id)
-        )
-        return result.scalars().all()
+        stmt = select(models.TaxRates).where(models.TaxRates.tenant_id == tenant_id)
+        result = await self.db.execute(stmt)
+        result = result.scalars().all()
+
+        return [{
+            "id": tax_rate.id,
+            "taxName": tax_rate.name,
+            "taxRate": tax_rate.rate,
+            "description": tax_rate.description,
+            "isDefault": tax_rate.default,
+            "effectiveDate": tax_rate.effective_date
+        } for tax_rate in result]
 
     async def save(self, tax_rate: models.TaxRates) -> models.TaxRates: 
         self.db.add(tax_rate)

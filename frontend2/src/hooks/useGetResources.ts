@@ -2,6 +2,7 @@ import apiClient from "@/api/api";
 import { PurchaseOrder, PurchaseOrderDetails } from "@/types/purchaseOrder";
 import { SaleResponse } from "@/types/sales";
 import { SupplierDashboardResponse } from "@/types/supplier";
+import { TaxResponse } from "@/types/tax";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 
 
@@ -67,6 +68,17 @@ export const useGetSupplierDashboard = (): UseQueryResult<SupplierDashboardRespo
         queryKey: ['supplierDashboard'],
         queryFn: async () => {
             const response = await apiClient.get(`/suppliers/dashboard`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000
+    })
+}
+
+export const useGetTaxRates = (limit: number = 100): UseQueryResult<TaxResponse[] | null, Error> => {
+    return useQuery<TaxResponse[] | null, Error>({
+        queryKey: ["taxRates"],
+        queryFn: async () => {
+            const response = await apiClient.get(`/taxes?limit=${limit}`);
             return response.data;
         },
         staleTime: 5 * 60 * 1000
