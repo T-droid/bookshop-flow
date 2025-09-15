@@ -23,3 +23,17 @@ class UpdateTaxModel(BaseModel):
 
     def __repr__(self):
         return f"UpdateTaxModel(name={self.taxName}, rate={self.taxRate})"
+
+class TaxResponseModel(BaseModel):
+    id: uuid.UUID
+    taxName: str
+    taxRate: float
+    description: Optional[str]
+    isDefault: bool
+    effectiveDate: datetime
+
+    class Config:
+        from_attributes = True
+
+    def __repr__(self):
+        return f"TaxResponseModel(id={self.id}, name={self.taxName}, rate={self.taxRate})"

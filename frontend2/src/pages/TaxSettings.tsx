@@ -1,4 +1,4 @@
-import { Plus, Edit, Trash2, Star, Calculator } from "lucide-react";
+import { Plus, Edit, Trash2, Star, Calculator, AlertTriangle, RefreshCw } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,36 +16,39 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { NewTaxRate, NewTaxRateSchema } from "@/schemas/taxSchema";
 import { useCreateTaxRate } from "@/hooks/useCreateResource";
+import { useGetTaxRates } from "@/hooks/useGetResources";
 
 
 
 export default function TaxSettings() {
-  const taxRates = [
-    {
-      id: 1,
-      name: "Standard VAT",
-      rate: 15.0,
-      isDefault: true,
-      effectiveDate: "2024-01-01",
-      description: "Standard VAT rate for most books"
-    },
-    {
-      id: 2,
-      name: "Educational Books",
-      rate: 0.0,
-      isDefault: false,
-      effectiveDate: "2024-01-01",
-      description: "Zero-rated VAT for educational materials"
-    },
-    {
-      id: 3,
-      name: "Luxury Items",
-      rate: 20.0,
-      isDefault: false,
-      effectiveDate: "2024-01-01",
-      description: "Higher VAT rate for premium books and collectibles"
-    }
-  ];
+  // const taxRates = [
+  //   {
+  //     id: 1,
+  //     name: "Standard VAT",
+  //     rate: 15.0,
+  //     isDefault: true,
+  //     effectiveDate: "2024-01-01",
+  //     description: "Standard VAT rate for most books"
+  //   },
+  //   {
+  //     id: 2,
+  //     name: "Educational Books",
+  //     rate: 0.0,
+  //     isDefault: false,
+  //     effectiveDate: "2024-01-01",
+  //     description: "Zero-rated VAT for educational materials"
+  //   },
+  //   {
+  //     id: 3,
+  //     name: "Luxury Items",
+  //     rate: 20.0,
+  //     isDefault: false,
+  //     effectiveDate: "2024-01-01",
+  //     description: "Higher VAT rate for premium books and collectibles"
+  //   }
+  // ];
+
+  const { data: taxRates, isLoading: loadingTaxRates, error: taxRatesError} = useGetTaxRates(10)
   const [triggerCheckName, setTriggerCheckName] = useState(false);
 
   const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = useForm<NewTaxRate>({
@@ -225,16 +228,51 @@ export default function TaxSettings() {
                 <h3 className="text-lg font-semibold text-foreground">Current Default Tax Rate</h3>
               </div>
               
-              <div className="flex items-center justify-between p-4 bg-gradient-accent rounded-lg">
-                <div>
-                  <h4 className="font-semibold text-accent-foreground">Standard VAT</h4>
-                  <p className="text-sm text-accent-foreground/80">Applied to most book sales</p>
+              {loadingTaxRates ? (
+                // Loading state for default tax rate
+                <div className="animate-pulse">
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                    <div className="flex-1">
+                      <div className="h-6 bg-muted-foreground/20 rounded mb-2"></div>
+                      <div className="h-4 bg-muted-foreground/20 rounded w-3/4"></div>
+                    </div>
+                    <div className="text-right">
+                      <div className="h-8 bg-muted-foreground/20 rounded w-16 mb-2"></div>
+                      <div className="h-4 bg-muted-foreground/20 rounded w-24"></div>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-2xl font-bold text-accent-foreground">15.0%</div>
-                  <p className="text-sm text-accent-foreground/80">Effective since Jan 1, 2024</p>
+              ) : taxRatesError ? (
+                // Error state for default tax rate
+                <div className="text-center py-8">
+                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-destructive" />
+                  <p className="text-destructive">Failed to load default tax rate</p>
                 </div>
-              </div>
+              ) : (
+                // Show default tax rate or fallback
+                (() => {
+                  const defaultTaxRate = taxRates?.find(rate => rate.isDefault);
+                  return defaultTaxRate ? (
+                    <div className="flex items-center justify-between p-4 bg-gradient-accent rounded-lg">
+                      <div>
+                        <h4 className="font-semibold text-accent-foreground">{defaultTaxRate.taxName}</h4>
+                        <p className="text-sm text-accent-foreground/80">{defaultTaxRate.description || "Applied to most book sales"}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-accent-foreground">{defaultTaxRate.taxRate}%</div>
+                        <p className="text-sm text-accent-foreground/80">
+                          Effective since {new Date(defaultTaxRate.effectiveDate).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Star className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-muted-foreground">No default tax rate set</p>
+                    </div>
+                  );
+                })()
+              )}
             </Card>
 
             {/* All Tax Rates */}
@@ -244,62 +282,111 @@ export default function TaxSettings() {
                 <h3 className="text-lg font-semibold text-foreground">All Tax Rates</h3>
               </div>
               
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Name</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Rate</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Status</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Effective Date</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Description</th>
-                      <th className="text-left p-3 text-sm font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {taxRates.map((rate) => (
-                      <tr key={rate.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            {rate.isDefault && <Star className="w-4 h-4 text-gold" />}
-                            <span className="font-medium text-foreground">{rate.name}</span>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <span className="text-lg font-semibold text-foreground">{rate.rate}%</span>
-                        </td>
-                        <td className="p-3">
-                          {rate.isDefault ? (
-                            <Badge className="bg-gold text-gold-foreground">Default</Badge>
-                          ) : (
-                            <Button variant="outline" size="sm">
-                              Set Default
-                            </Button>
-                          )}
-                        </td>
-                        <td className="p-3 text-muted-foreground">
-                          {new Date(rate.effectiveDate).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 text-muted-foreground max-w-xs truncate">
-                          {rate.description}
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm">
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            {!rate.isDefault && (
-                              <Button variant="ghost" size="sm">
-                                <Trash2 className="w-4 h-4" />
+              {loadingTaxRates ? (
+                // Loading state for table
+                <div className="space-y-4">
+                  <div className="animate-pulse">
+                    {/* Table header skeleton */}
+                    <div className="grid grid-cols-6 gap-4 p-3 border-b border-border">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <div key={index} className="h-4 bg-muted rounded"></div>
+                      ))}
+                    </div>
+                    {/* Table rows skeleton */}
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="grid grid-cols-6 gap-4 p-3 border-b border-border">
+                        {Array.from({ length: 6 }).map((_, cellIndex) => (
+                          <div key={cellIndex} className="h-4 bg-muted rounded"></div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : taxRatesError ? (
+                // Error state for table
+                <div className="text-center py-12">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-destructive" />
+                  <h4 className="text-lg font-medium text-foreground mb-2">Failed to load tax rates</h4>
+                  <p className="text-muted-foreground mb-4">
+                    There was an error loading the tax rate data. Please try refreshing the page.
+                  </p>
+                  <Button 
+                    onClick={() => window.location.reload()} 
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh Page
+                  </Button>
+                </div>
+              ) : !taxRates || taxRates.length === 0 ? (
+                // Empty state
+                <div className="text-center py-12">
+                  <Calculator className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <h4 className="text-lg font-medium text-foreground mb-2">No tax rates found</h4>
+                  <p className="text-muted-foreground mb-4">
+                    Get started by adding your first tax rate using the form on the left.
+                  </p>
+                </div>
+              ) : (
+                // Actual table with data
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Name</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Rate</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Effective Date</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Description</th>
+                        <th className="text-left p-3 text-sm font-medium text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {taxRates.map((rate) => (
+                        <tr key={rate.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                          <td className="p-3">
+                            <div className="flex items-center gap-2">
+                              {rate.isDefault && <Star className="w-4 h-4 text-gold" />}
+                              <span className="font-medium text-foreground">{rate.taxName}</span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <span className="text-lg font-semibold text-foreground">{rate.taxRate}%</span>
+                          </td>
+                          <td className="p-3">
+                            {rate.isDefault ? (
+                              <Badge className="bg-gold text-gold-foreground">Default</Badge>
+                            ) : (
+                              <Button variant="outline" size="sm">
+                                Set Default
                               </Button>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          </td>
+                          <td className="p-3 text-muted-foreground">
+                            {new Date(rate.effectiveDate).toLocaleDateString()}
+                          </td>
+                          <td className="p-3 text-muted-foreground max-w-xs truncate">
+                            {rate.description}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {!rate.isDefault && (
+                                <Button variant="ghost" size="sm">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </Card>
           </div>
         </div>

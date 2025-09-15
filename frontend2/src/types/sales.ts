@@ -36,16 +36,14 @@ export interface CreateSaleData {
 
 export interface SaleResponse {
   sale_id: string;
-  tenant_id: string;
-  customer?: Customer;
-  sale_items: SaleItem[];
-  subtotal: number;
-  total: number;
-  tax?: number;
-  discount?: number;
-  sale_date: string;
+  date: string;
+  total_amount: number;
+  sale_status: string;
+  customer_name: string;
+  customer_phone: string;
+  customer_email: string;
   payment_method: string;
-  status: string;
+  items: number;
 }
 
 export interface CreateSaleResponse {

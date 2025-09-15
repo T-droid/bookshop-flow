@@ -42,7 +42,7 @@ async def create_tax_rate(
 async def check_tax_name(
     name: Annotated[str, Query(..., min_length=1, max_length=100)],
     db: SessionDep,
-    user: CurrentUser = Depends(get_current_user)  # Any authenticated user can check tax name
+    user: CurrentUser = Depends(get_current_user)
 ):
     """
     Check if a tax name is unique within the tenant.

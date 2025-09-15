@@ -1,4 +1,4 @@
-from .tax_model import CreateTaxModel, UpdateTaxModel
+from .tax_model import CreateTaxModel, UpdateTaxModel, TaxResponseModel
 from .tax_repository import TaxRepository
 from ...db.session import SessionDep
 from ...utils.result import ServiceResult
@@ -105,5 +105,16 @@ class TaxService:
             await self.repo.save(tax_rate)
             
             return ServiceResult(success=True, data=tax_rate)
+        except Exception as e:
+            return ServiceResult(success=False, error=str(e))
+
+    async def get_tax_rates_by_tenant(self, tenant_id: uuid.UUID) -> ServiceResult:
+        """
+        Get all tax rates for a tenant
+        """
+        try:
+            tax_rates = await self.repo.list_tax_rates_by_tenant(tenant_id)
+            validated_tax_rates = [TaxResponseModel.model_validate(tr) for tr in tax_rates]
+            return ServiceResult(success=True, data=validated_tax_rates)
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
