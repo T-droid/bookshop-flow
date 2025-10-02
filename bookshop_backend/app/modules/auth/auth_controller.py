@@ -51,9 +51,10 @@ async def login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
+        secure=True,
         samesite="lax",
         max_age=60 * 60 * 24 * 7,
+        domain=None
     )
     return response
 
