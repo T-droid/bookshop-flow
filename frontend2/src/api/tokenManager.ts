@@ -9,6 +9,6 @@ export const setAccessToken = (token: string | null) => {
 export const getAccessToken = () => accessToken;
 
 export const refreshAccessToken = async () => {
-    const res = await axios.post("http://localhost:8000/auth/refresh", {}, { withCredentials: true });
+    const res = await axios.post("https://bookshop-flow.onrender.com/auth/refresh", {}, { withCredentials: true });
     setAccessToken(res.data.access_token);
 }

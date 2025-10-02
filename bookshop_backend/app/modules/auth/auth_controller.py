@@ -51,9 +51,10 @@ async def login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=True,  # Required for HTTPS (Render deployment)
+        samesite="none",  # Required for cross-origin requests in production
         max_age=60 * 60 * 24 * 7,
+        path="/",
         domain=None
     )
     return response
@@ -87,5 +88,12 @@ async def refresh(request: Request, db: SessionDep):
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(response: Response):
     response = JSONResponse(content={"message": "Logout successful"})
-    response.delete_cookie("refresh_token")
+    # Delete cookie with same attributes as when it was set
+    response.delete_cookie(
+        key="refresh_token",
+        path="/",
+        domain=None,
+        secure=True,
+        samesite="none"
+    )
     return response

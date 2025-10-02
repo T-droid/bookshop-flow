@@ -40,10 +40,14 @@ def custom_openapi_auth():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8080", "https://bookshop-flow.vercel.app"], 
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://localhost:8080", 
+        "https://bookshop-flow.vercel.app",
+    ], 
     allow_credentials=True,
     allow_methods=["GET", "POST", "HEAD", "OPTIONS", "PUT", "DELETE", "PATCH"],
-    allow_headers=["Access-Control-Allow-Headers", "Content-Type", "Authorization", "Access-Control-Allow-Origin","Set-Cookie"],
+    allow_headers=["Access-Control-Allow-Headers", "Content-Type", "Authorization", "Access-Control-Allow-Origin", "Set-Cookie", "Cookie"],
 )
 
 app.include_router(api_router)
