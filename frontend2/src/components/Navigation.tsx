@@ -1,8 +1,9 @@
-import { Book, BarChart3, Package, Users, Settings, FileText, Calculator, Shield, Receipt, Boxes } from "lucide-react";
+import { Book, BarChart3, Package, Users, Settings, FileText, Calculator, Shield, Receipt, Boxes, Image } from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import logo from "@/assets/logo.png"
 
 const navItems = [
   { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true, roles: ["admin", "manager", "sales", "finance", "superadmin"] },
@@ -35,7 +36,13 @@ export function Navigation() {
           {/* Logo */}
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <Book className="w-5 h-5 text-primary-foreground" />
+              <img
+              src={logo}
+              alt="BookShelf IMS"
+              loading="lazy"
+              height={24}
+              width={24}
+              />
             </div>
             <div>
               <h1 className="text-lg font-bold text-foreground">BookShelf IMS</h1>
