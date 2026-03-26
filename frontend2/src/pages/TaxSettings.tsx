@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { NewTaxRate, NewTaxRateSchema } from "@/schemas/taxSchema";
 import { useCreateTaxRate } from "@/hooks/useCreateResource";
-import { useGetTaxRates } from "@/hooks/useGetResources";
+import { useGetDefaultTaxRate, useGetTaxRates } from "@/hooks/useGetResources";
 
 
 
@@ -49,6 +49,7 @@ export default function TaxSettings() {
   // ];
 
   const { data: taxRates, isLoading: loadingTaxRates, error: taxRatesError} = useGetTaxRates(10)
+  const { data: defaultTaxRate } = useGetDefaultTaxRate();
   const [triggerCheckName, setTriggerCheckName] = useState(false);
 
   const { register, handleSubmit, watch, setValue, setError, clearErrors, formState: { errors } } = useForm<NewTaxRate>({
@@ -251,17 +252,17 @@ export default function TaxSettings() {
               ) : (
                 // Show default tax rate or fallback
                 (() => {
-                  const defaultTaxRate = taxRates?.find(rate => rate.isDefault);
-                  return defaultTaxRate ? (
+                  const defaultRate = defaultTaxRate ?? taxRates?.find(rate => rate.isDefault);
+                  return defaultRate ? (
                     <div className="flex items-center justify-between p-4 bg-gradient-accent rounded-lg">
                       <div>
-                        <h4 className="font-semibold text-accent-foreground">{defaultTaxRate.taxName}</h4>
-                        <p className="text-sm text-accent-foreground/80">{defaultTaxRate.description || "Applied to most book sales"}</p>
+                        <h4 className="font-semibold text-accent-foreground">{defaultRate.taxName}</h4>
+                        <p className="text-sm text-accent-foreground/80">{defaultRate.description || "Applied to most book sales"}</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold text-accent-foreground">{defaultTaxRate.taxRate}%</div>
+                        <div className="text-2xl font-bold text-accent-foreground">{(defaultRate.taxRate * 100).toFixed(2)}%</div>
                         <p className="text-sm text-accent-foreground/80">
-                          Effective since {new Date(defaultTaxRate.effectiveDate).toLocaleDateString()}
+                          Effective since {new Date(defaultRate.effectiveDate).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -352,7 +353,7 @@ export default function TaxSettings() {
                             </div>
                           </td>
                           <td className="p-3">
-                            <span className="text-lg font-semibold text-foreground">{rate.taxRate}%</span>
+                            <span className="text-lg font-semibold text-foreground">{(rate.taxRate * 100).toFixed(2)}%</span>
                           </td>
                           <td className="p-3">
                             {rate.isDefault ? (

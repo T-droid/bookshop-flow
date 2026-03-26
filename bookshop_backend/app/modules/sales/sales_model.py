@@ -66,4 +66,38 @@ class SaleResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class SalesDashboardSummaryResponse(BaseModel):
+    today_sales_count: int
+    today_revenue: Decimal
+    monthly_revenue: Decimal
+    recent_sales: List[SaleResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class MonthlySalesReportItem(BaseModel):
+    month: str
+    revenue: Decimal
+    transactions: int
+
+
+class BestSellerReportItem(BaseModel):
+    title: str
+    isbn: str
+    units_sold: int
+    revenue: Decimal
+
+
+class SalesReportsSummaryResponse(BaseModel):
+    total_revenue: Decimal
+    total_transactions: int
+    average_order_value: Decimal
+    monthly_sales: List[MonthlySalesReportItem]
+    best_sellers: List[BestSellerReportItem]
+
+    class Config:
+        from_attributes = True
+
         

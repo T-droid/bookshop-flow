@@ -1,8 +1,10 @@
 import apiClient from "@/api/api";
 import { PurchaseOrder, PurchaseOrderDetails } from "@/types/purchaseOrder";
-import { SaleResponse } from "@/types/sales";
+import { InventoryResponse } from "@/types/inventory";
+import { SaleResponse, SalesDashboardSummary, SalesReportsSummary } from "@/types/sales";
 import { SupplierDashboardResponse } from "@/types/supplier";
-import { TaxResponse } from "@/types/tax";
+import { DefaultTaxResponse, TaxResponse } from "@/types/tax";
+import { BookshopUser } from "@/types/user";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 
 
@@ -17,8 +19,8 @@ export const useGetSuppliers = (skip = 0, limit = 100) => {
     })
 };
 
-export const useGetInventory = (limit: number = 10) => {
-    return useQuery({
+export const useGetInventory = (limit: number = 10): UseQueryResult<InventoryResponse | null, Error> => {
+    return useQuery<InventoryResponse | null, Error>({
         queryKey: ['inventory', limit],
         queryFn: async () => {
             const response = await apiClient.get(`/inventory?limit=${limit}`);
@@ -54,9 +56,31 @@ export const useGetPurchaseOrderDetails = (po_id: string): UseQueryResult<Purcha
 
 export const useGetSales = (limit: number = 100): UseQueryResult<SaleResponse[] | null, Error> => {
     return useQuery<SaleResponse[] | null, Error>({
-        queryKey: ["sales"],
+        queryKey: ["sales", limit],
         queryFn: async () => {
             const response = await apiClient.get(`/sales?limit=${limit}`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000
+    })
+}
+
+export const useGetSalesDashboardSummary = (recentLimit: number = 5): UseQueryResult<SalesDashboardSummary | null, Error> => {
+    return useQuery<SalesDashboardSummary | null, Error>({
+        queryKey: ["salesDashboardSummary", recentLimit],
+        queryFn: async () => {
+            const response = await apiClient.get(`/sales/dashboard-summary?recent_limit=${recentLimit}`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000
+    })
+}
+
+export const useGetSalesReportsSummary = (): UseQueryResult<SalesReportsSummary | null, Error> => {
+    return useQuery<SalesReportsSummary | null, Error>({
+        queryKey: ["salesReportsSummary"],
+        queryFn: async () => {
+            const response = await apiClient.get("/sales/reports-summary");
             return response.data;
         },
         staleTime: 5 * 60 * 1000
@@ -76,9 +100,32 @@ export const useGetSupplierDashboard = (): UseQueryResult<SupplierDashboardRespo
 
 export const useGetTaxRates = (limit: number = 100): UseQueryResult<TaxResponse[] | null, Error> => {
     return useQuery<TaxResponse[] | null, Error>({
-        queryKey: ["taxRates"],
+        queryKey: ["taxRates", limit],
         queryFn: async () => {
-            const response = await apiClient.get(`/taxes?limit=${limit}`);
+            const response = await apiClient.get(`/taxes`);
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000
+    })
+}
+
+export const useGetDefaultTaxRate = (): UseQueryResult<DefaultTaxResponse | null, Error> => {
+    return useQuery<DefaultTaxResponse | null, Error>({
+        queryKey: ["defaultTaxRate"],
+        queryFn: async () => {
+            const response = await apiClient.get("/taxes/default");
+            return response.data;
+        },
+        staleTime: 5 * 60 * 1000,
+        retry: false
+    })
+}
+
+export const useGetBookshopUsers = (): UseQueryResult<BookshopUser[] | null, Error> => {
+    return useQuery<BookshopUser[] | null, Error>({
+        queryKey: ["bookshopUsers"],
+        queryFn: async () => {
+            const response = await apiClient.get("/users");
             return response.data;
         },
         staleTime: 5 * 60 * 1000

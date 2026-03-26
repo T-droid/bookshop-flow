@@ -7,28 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-
-interface Supplier {
-  name: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  address: string;
-  website: string;
-  notes: string;
-  category: string;
-  paymentTerms: string;
-  status: string;
-}
+import { AddSupplierFormData } from "@/types/supplier";
 
 interface AddSupplierModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddSuppliers: (suppliers: Supplier[]) => void;
+  onAddSuppliers: (suppliers: AddSupplierFormData[]) => Promise<void> | void;
+  isSubmitting?: boolean;
 }
 
-export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplierModalProps) {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([
+export function AddSupplierModal({ isOpen, onClose, onAddSuppliers, isSubmitting = false }: AddSupplierModalProps) {
+  const [suppliers, setSuppliers] = useState<AddSupplierFormData[]>([
     {
       name: "",
       contactPerson: "",
@@ -65,7 +54,7 @@ export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplie
     ]);
   };
 
-  const updateSupplier = (index: number, field: keyof Supplier, value: string) => {
+  const updateSupplier = (index: number, field: keyof AddSupplierFormData, value: string) => {
     const updatedSuppliers = [...suppliers];
     updatedSuppliers[index][field] = value;
     setSuppliers(updatedSuppliers);
@@ -93,7 +82,7 @@ export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplie
     return emailRegex.test(email);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateSuppliers()) {
       alert("Please fill in all required fields for all suppliers.");
       return;
@@ -106,7 +95,7 @@ export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplie
       return;
     }
 
-    onAddSuppliers(suppliers);
+    await onAddSuppliers(suppliers);
     setSuppliers([
       {
         name: "",
@@ -142,6 +131,7 @@ export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplie
                   size="sm"
                   className="absolute top-2 right-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={() => removeSupplier(index)}
+                  disabled={isSubmitting}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -335,6 +325,7 @@ export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplie
             variant="outline" 
             className="w-full border-dashed border-2 hover:border-primary hover:bg-primary/5" 
             onClick={addSupplierEntry}
+            disabled={isSubmitting}
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Another Supplier
@@ -342,12 +333,12 @@ export function AddSupplierModal({ isOpen, onClose, onAddSuppliers }: AddSupplie
         </div>
         
         <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="premium" onClick={handleSubmit} className="gap-2">
+          <Button variant="premium" onClick={handleSubmit} className="gap-2" disabled={isSubmitting}>
             <Save className="w-4 h-4" />
-            Save Suppliers ({suppliers.length})
+            {isSubmitting ? "Saving..." : `Save Suppliers (${suppliers.length})`}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -49,3 +49,31 @@ export interface SaleResponse {
 export interface CreateSaleResponse {
   sale_id: string;
 }
+
+export interface SalesDashboardSummary {
+  today_sales_count: number;
+  today_revenue: number;
+  monthly_revenue: number;
+  recent_sales: SaleResponse[];
+}
+
+export interface MonthlySalesReportItem {
+  month: string;
+  revenue: number;
+  transactions: number;
+}
+
+export interface BestSellerReportItem {
+  title: string;
+  isbn: string;
+  units_sold: number;
+  revenue: number;
+}
+
+export interface SalesReportsSummary {
+  total_revenue: number;
+  total_transactions: number;
+  average_order_value: number;
+  monthly_sales: MonthlySalesReportItem[];
+  best_sellers: BestSellerReportItem[];
+}

@@ -3,6 +3,7 @@ from .supplier_model import SupplierCreate, SupplierDashboardResponse
 from .supplier_repository import SupplierRepository
 from ...utils.result import ServiceResult
 from ..books.book_service import BookService
+import uuid
 
 
 class SupplierService:
@@ -22,7 +23,7 @@ class SupplierService:
                     return ServiceResult(success=False, error="Supplier already exists for this tenant")
                 
                 await self.repo.add_tenant_to_supplier(existing_supplier.id, supplier_data.tenant_id)
-                return ServiceResult(success=True, data=existing_supplier)
+                return ServiceResult(success=True, data=existing_supplier.id)
             
             # Create new supplier
             supplier_id = await self.repo.create_supplier(supplier_data)
@@ -31,14 +32,14 @@ class SupplierService:
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
         
-    async def get_suppliers_by_tenant(self, tenant_id: str, skip: int = 0, limit: int = 100) -> ServiceResult:
+    async def get_suppliers_by_tenant(self, tenant_id: uuid.UUID, skip: int = 0, limit: int = 100) -> ServiceResult:
         try:
             suppliers = await self.repo.list_suppliers(tenant_id, skip, limit)
             return ServiceResult(success=True, data=suppliers)
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
 
-    async def get_supplier_dashboard(self, tenant_id: str) -> ServiceResult:
+    async def get_supplier_dashboard(self, tenant_id: uuid.UUID) -> ServiceResult:
         try:
             suppliers_data = await self.repo.list_suppliers(tenant_id)
             

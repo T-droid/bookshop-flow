@@ -30,7 +30,13 @@ async def create_supplier(
     Requires: Write suppliers permission (Admin/Manager)
     """
     service = SupplierService(db)
-    supplier.tenant_id = get_current_tenant_id(user)
+    if not user.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User does not belong to any tenant"
+        )
+
+    supplier.tenant_id = user.tenant_id
     result = await service.create_supplier(supplier)
     if not result.success:
         raise HTTPException(

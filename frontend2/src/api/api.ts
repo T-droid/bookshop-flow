@@ -3,8 +3,8 @@ import { getAccessToken, refreshAccessToken } from "./tokenManager";
 
 
 const apiClient = axios.create({
-  baseURL: "https://bookshop-flow.onrender.com",
-  withCredentials: true, 
+  baseURL: "http://localhost:8000",
+  withCredentials: true,
 });
 
 apiClient.interceptors.request.use(
@@ -28,7 +28,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
       try {
         await refreshAccessToken();
-        const token  = getAccessToken();
+        const token = getAccessToken();
         originalRequest.headers["Authorization"] = `Bearer ${token}`
         return apiClient(originalRequest);
       } catch (error) {

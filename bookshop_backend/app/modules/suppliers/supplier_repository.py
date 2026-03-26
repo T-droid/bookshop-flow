@@ -9,8 +9,8 @@ class SupplierRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_supplier(self, supplier_data: SupplierCreate) -> models.Supplier:
-        new_supplier = models.Supplier(**supplier_data.dict())
+    async def create_supplier(self, supplier_data: SupplierCreate) -> uuid.UUID:
+        new_supplier = models.Supplier(**supplier_data.dict(exclude_none=True))
         await self.save(new_supplier)
         return new_supplier.id
 
@@ -43,7 +43,11 @@ class SupplierRepository:
 
     async def list_suppliers(self, tenant_id: uuid.UUID, skip: int = 0, limit: int = 100) -> List[models.Supplier]:
         result = await self.db.execute(
-            select(models.Supplier).where(models.Supplier.tenant_id == tenant_id).offset(skip).limit(limit)
+            select(models.Supplier)
+            .join(models.TenantSupplier, models.TenantSupplier.supplier_id == models.Supplier.id)
+            .where(models.TenantSupplier.tenant_id == tenant_id)
+            .offset(skip)
+            .limit(limit)
         )
         return result.scalars().all()
 

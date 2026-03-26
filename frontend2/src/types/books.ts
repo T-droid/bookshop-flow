@@ -7,6 +7,7 @@ export interface BookResponse {
 export interface BookData {
   cost_price?: number;
   edition_id?: string;
+  inventory_id?: string;
   book_found: boolean;
   isbn_number: string;
   title?: string;
@@ -19,6 +20,8 @@ export interface BookData {
 
 export interface CartItem {
   id: string;
+  edition_id: string;
+  inventory_id: string;
   title: string;
   author: string;
   isbn: string;

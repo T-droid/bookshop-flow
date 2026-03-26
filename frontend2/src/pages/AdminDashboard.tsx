@@ -15,7 +15,9 @@ import {
   Download,
   Filter,
   Calendar,
-  Search
+  Search,
+  KeyRound,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppLayout } from '@/components/AppLayout';
@@ -28,10 +30,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PurchaseOrderDetails from '@/components/PurchaseOrderDetails';
 import { useNotifications } from '@/components/NotificationProvider';
-import { useGetPurchaseOrders, useGetSales } from '@/hooks/useGetResources';
-import { useUpdatePurchaseOrderStatus } from '@/hooks/useCreateResource';
+import { useGetBookshopUsers, useGetPurchaseOrders, useGetSales } from '@/hooks/useGetResources';
+import { useCreateBookshopUser, useResetBookshopUserPassword, useUpdatePurchaseOrderStatus } from '@/hooks/useCreateResource';
 import { useQueryClient } from '@tanstack/react-query';
 import { SaleResponse } from '@/types/sales';
+import { BookshopUser } from '@/types/user';
 
 
 interface AnalyticsData {
@@ -50,6 +53,14 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState('30days');
+  const [newUserForm, setNewUserForm] = useState({
+    full_name: '',
+    email: '',
+    phone_number: '',
+    user_role: 'manager',
+    password: '',
+  });
+  const [resetPasswords, setResetPasswords] = useState<Record<string, string>>({});
 
   // Mock sales data
   // const [salesData] = useState<SalesData[]>([
@@ -117,7 +128,12 @@ const AdminDashboard = () => {
   });
 
   const { data: purchaseOrdersData, isLoading: loadingPurchaseOrders, error: purchaseOrdersError } = useGetPurchaseOrders();
+  const { data: bookshopUsers, isLoading: loadingUsers, error: usersError } = useGetBookshopUsers();
   const updatePurchaseOrderStatus = useUpdatePurchaseOrderStatus();
+  const createBookshopUser = useCreateBookshopUser();
+  const resetBookshopUserPassword = useResetBookshopUserPassword();
+
+  const roleOptions = ['admin', 'manager', 'cashier', 'viewer', 'editor'];
 
   // Function to calculate priority based on dates
   const calculatePriority = (createdDate: string, expectedDelivery: string): 'High' | 'Medium' | 'Low' => {
@@ -214,6 +230,62 @@ const AdminDashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    await createBookshopUser.mutateAsync({
+      full_name: newUserForm.full_name.trim(),
+      email: newUserForm.email.trim(),
+      phone_number: newUserForm.phone_number.trim(),
+      user_role: newUserForm.user_role,
+      password: newUserForm.password.trim(),
+    });
+
+    setNewUserForm({
+      full_name: '',
+      email: '',
+      phone_number: '',
+      user_role: 'manager',
+      password: '',
+    });
+  };
+
+  const handleResetPassword = async (userId: string) => {
+    const password = resetPasswords[userId]?.trim();
+    if (!password) {
+      addNotification({
+        type: 'error',
+        title: 'Password Required',
+        message: 'Enter a new password before resetting it.',
+        duration: 3500
+      });
+      return;
+    }
+
+    await resetBookshopUserPassword.mutateAsync({
+      user_id: userId,
+      new_password: password,
+    });
+
+    setResetPasswords((current) => ({ ...current, [userId]: '' }));
+  };
+
+  const getUserRoleBadge = (role: string) => {
+    const normalizedRole = role.toLowerCase();
+    switch (normalizedRole) {
+      case 'admin':
+        return <Badge className="bg-red-100 text-red-700 border-red-200">{role}</Badge>;
+      case 'manager':
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200">{role}</Badge>;
+      case 'cashier':
+        return <Badge className="bg-green-100 text-green-700 border-green-200">{role}</Badge>;
+      case 'viewer':
+        return <Badge className="bg-slate-100 text-slate-700 border-slate-200">{role}</Badge>;
+      default:
+        return <Badge className="bg-amber-100 text-amber-700 border-amber-200">{role}</Badge>;
+    }
+  };
+
   if (selectedPO) {
     return (
       <AppLayout>
@@ -272,7 +344,7 @@ const AdminDashboard = () => {
         </motion.div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[760px]">
             <TabsTrigger value="overview" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -288,6 +360,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="analytics" className="gap-2">
               <TrendingUp className="w-4 h-4" />
               Analytics
+            </TabsTrigger>
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="w-4 h-4" />
+              Users
             </TabsTrigger>
           </TabsList>
 
@@ -747,6 +823,150 @@ const AdminDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <Card className="shadow-card-soft border border-border xl:col-span-1">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Add Staff User
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form className="space-y-4" onSubmit={handleCreateUser}>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Full Name</p>
+                      <Input
+                        value={newUserForm.full_name}
+                        onChange={(e) => setNewUserForm((current) => ({ ...current, full_name: e.target.value }))}
+                        placeholder="Jane Doe"
+                        disabled={createBookshopUser.isPending}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Email</p>
+                      <Input
+                        type="email"
+                        value={newUserForm.email}
+                        onChange={(e) => setNewUserForm((current) => ({ ...current, email: e.target.value }))}
+                        placeholder="staff@bookshop.com"
+                        disabled={createBookshopUser.isPending}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Phone Number</p>
+                      <Input
+                        value={newUserForm.phone_number}
+                        onChange={(e) => setNewUserForm((current) => ({ ...current, phone_number: e.target.value }))}
+                        placeholder="+254700000000"
+                        disabled={createBookshopUser.isPending}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Role</p>
+                      <Select
+                        value={newUserForm.user_role}
+                        onValueChange={(value) => setNewUserForm((current) => ({ ...current, user_role: value }))}
+                        disabled={createBookshopUser.isPending}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roleOptions.map((role) => (
+                            <SelectItem key={role} value={role}>
+                              {role.charAt(0).toUpperCase() + role.slice(1)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Temporary Password</p>
+                      <Input
+                        type="password"
+                        value={newUserForm.password}
+                        onChange={(e) => setNewUserForm((current) => ({ ...current, password: e.target.value }))}
+                        placeholder="At least 8 characters"
+                        disabled={createBookshopUser.isPending}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full gap-2" disabled={createBookshopUser.isPending}>
+                      <UserPlus className="w-4 h-4" />
+                      {createBookshopUser.isPending ? 'Creating User...' : 'Create User'}
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card-soft border border-border xl:col-span-2">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Bookshop Users
+                    </CardTitle>
+                    <Badge variant="outline">
+                      {loadingUsers ? '...' : `${bookshopUsers?.length || 0} user${(bookshopUsers?.length || 0) === 1 ? '' : 's'}`}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loadingUsers ? (
+                    <div className="text-center py-10 text-muted-foreground">Loading users...</div>
+                  ) : usersError ? (
+                    <div className="text-center py-10">
+                      <p className="text-destructive mb-3">Failed to load users</p>
+                      <Button variant="outline" onClick={() => window.location.reload()}>
+                        Retry
+                      </Button>
+                    </div>
+                  ) : !bookshopUsers || bookshopUsers.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                      No users found for this bookshop yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {bookshopUsers.map((staffUser: BookshopUser) => (
+                        <div key={staffUser.id} className="rounded-lg border border-border p-4 bg-muted/20">
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-3">
+                                <p className="font-semibold text-foreground">{staffUser.full_name || 'Unnamed User'}</p>
+                                {getUserRoleBadge(staffUser.user_role)}
+                              </div>
+                              <p className="text-sm text-muted-foreground">{staffUser.email}</p>
+                              <p className="text-sm text-muted-foreground">{staffUser.phone_number}</p>
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <Input
+                                type="password"
+                                value={resetPasswords[staffUser.id] || ''}
+                                onChange={(e) => setResetPasswords((current) => ({ ...current, [staffUser.id]: e.target.value }))}
+                                placeholder="New password"
+                                className="sm:w-56"
+                                disabled={resetBookshopUserPassword.isPending}
+                              />
+                              <Button
+                                variant="outline"
+                                className="gap-2"
+                                onClick={() => handleResetPassword(staffUser.id)}
+                                disabled={resetBookshopUserPassword.isPending}
+                              >
+                                <KeyRound className="w-4 h-4" />
+                                Reset Password
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

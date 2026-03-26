@@ -9,6 +9,7 @@ from .purchase_orders.purchase_order_controller import router as purchase_order_
 from .inventory.inventory_controller import router as inventory_router
 from .sales.sales_controller import router as sales_router
 from .payments.payment_controller import router as payment_router
+from .user.user_controller import router as user_router
 
 
 api_router = APIRouter()
@@ -81,5 +82,12 @@ api_router.include_router(
     payment_router,
     prefix="/payments",
     tags=["Payments"],
+    responses={404: {"description": "Not found"}},
+)
+
+api_router.include_router(
+    user_router,
+    prefix="/users",
+    tags=["Users"],
     responses={404: {"description": "Not found"}},
 )

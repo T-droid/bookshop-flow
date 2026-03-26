@@ -1,10 +1,11 @@
 from ...db.session import SessionDep
 from .sales_repository import SalesRepository
-from .sales_model import SalesRequestBody, Sales, SaleItem, SaleResponse
+from .sales_model import SalesRequestBody, Sales, SaleItem, SaleResponse, SalesDashboardSummaryResponse, SalesReportsSummaryResponse
 from ...utils.result import ServiceResult
 import uuid
 import traceback
 from ..inventory.inventory_service import InventoryService
+from decimal import Decimal
 
 class SalesService:
     def __init__(self, db: SessionDep):
@@ -101,4 +102,37 @@ class SalesService:
             return ServiceResult(
                 success=False,
                 error=f"Failed to retrieve sales: {str(e)}"
+            )
+
+    async def get_dashboard_summary(self, tenant_id: uuid.UUID, recent_limit: int = 5) -> ServiceResult:
+        try:
+            summary = await self.repository.get_dashboard_summary(tenant_id=tenant_id, recent_limit=recent_limit)
+
+            validated_recent_sales = []
+            for sale in summary.get("recent_sales", []):
+                validated_recent_sales.append(SaleResponse.model_validate(sale))
+
+            validated_summary = SalesDashboardSummaryResponse(
+                today_sales_count=summary.get("today_sales_count", 0),
+                today_revenue=Decimal(str(summary.get("today_revenue", 0))),
+                monthly_revenue=Decimal(str(summary.get("monthly_revenue", 0))),
+                recent_sales=validated_recent_sales
+            )
+
+            return ServiceResult(success=True, data=validated_summary.model_dump())
+        except Exception as e:
+            return ServiceResult(
+                success=False,
+                error=f"Failed to retrieve dashboard summary: {str(e)}"
+            )
+
+    async def get_reports_summary(self, tenant_id: uuid.UUID) -> ServiceResult:
+        try:
+            summary = await self.repository.get_reports_summary(tenant_id=tenant_id)
+            validated_summary = SalesReportsSummaryResponse.model_validate(summary)
+            return ServiceResult(success=True, data=validated_summary.model_dump())
+        except Exception as e:
+            return ServiceResult(
+                success=False,
+                error=f"Failed to retrieve reports summary: {str(e)}"
             )
