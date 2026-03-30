@@ -3,8 +3,17 @@ export interface InventoryResponse {
   total_value: number;
   out_of_stock: number;
   low_stock: number;
+  low_stock_items: LowStockInventoryItem[];
   total_items: number;
   top_items: TopInventoryItem[];
+}
+
+export interface LowStockInventoryItem {
+  title: string;
+  author: string;
+  isbn_number: string;
+  reorder_level: number;
+  stock: number;
 }
 
 export interface TopInventoryItem {

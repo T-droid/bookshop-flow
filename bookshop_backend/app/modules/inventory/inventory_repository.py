@@ -17,6 +17,13 @@ class TopInventoryItem(TypedDict):
     sale_price: Decimal
     stock: int
 
+class LowStockInventoryItem(TypedDict):
+    title: str
+    author: str
+    isbn_number: str
+    reorder_level: int
+    stock: int
+
 class InventoryRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -93,6 +100,47 @@ class InventoryRepository:
         except Exception as e:
             print(f"Error getting low stock items: {str(e)}")
             return 0
+
+    async def get_low_stock_items_by_tenant(self, tenant_id: uuid.UUID, limit: int = 5) -> List[Dict[str, Any]]:
+        try:
+            stmt = (
+                select(
+                    models.Book.title,
+                    models.Book.author,
+                    models.BookEdition.isbn_number,
+                    models.Inventory.reorder_level,
+                    models.Inventory.quantity_on_hand,
+                    models.Inventory.quantity_reserved
+                )
+                .select_from(models.Inventory)
+                .join(models.BookEdition, models.Inventory.edition_id == models.BookEdition.edition_id)
+                .join(models.Book, models.BookEdition.book_id == models.Book.id)
+                .where(models.Inventory.tenant_id == tenant_id)
+                .order_by(models.Inventory.updated_at.desc())
+            )
+
+            result = await self.db.execute(stmt)
+            rows = result.all()
+
+            data: List[Dict[str, Any]] = []
+            for row in rows:
+                available_quantity = row.quantity_on_hand - row.quantity_reserved
+                if available_quantity <= row.reorder_level:
+                    data.append({
+                        "title": row.title,
+                        "author": row.author,
+                        "isbn_number": row.isbn_number,
+                        "reorder_level": row.reorder_level,
+                        "stock": available_quantity
+                    })
+
+                if len(data) >= limit:
+                    break
+
+            return data
+        except Exception as e:
+            print(f"Error getting low stock item details: {str(e)}")
+            return []
     
     async def get_top_inventory_items_by_date(self, tenant_id: uuid.UUID, limit: int = 5) -> List[Dict[str, Any]]:
         try:

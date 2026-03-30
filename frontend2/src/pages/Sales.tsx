@@ -41,6 +41,7 @@ import { salesApi } from '@/api/salesApi';
 import { CreateSaleData, Customer, Payment, SaleItem } from '@/types/sales';
 import { toast } from 'sonner';
 import { useCreateSale } from '@/hooks/useCreateResource';
+import { useGetDefaultTaxRate } from '@/hooks/useGetResources';
 
 
 
@@ -94,6 +95,8 @@ export default function Sales() {
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const isbnInputRef = useRef<HTMLInputElement>(null);
   const [availableBook, setAvailableBook] = useState<BookData | null>(null);
+  const { data: defaultTaxRate } = useGetDefaultTaxRate();
+  const defaultVatRate = (defaultTaxRate?.taxRate ?? 0) * 100;
 
   // Update time every second
   useEffect(() => {
@@ -109,6 +112,16 @@ export default function Sales() {
       isbnInputRef.current.focus();
     }
   }, []);
+
+  useEffect(() => {
+    if (!defaultVatRate) return;
+    setCartItems((items) =>
+      items.map((item) => ({
+        ...item,
+        vatRate: item.vatRate ?? defaultVatRate,
+      }))
+    );
+  }, [defaultVatRate]);
 
   // QR Payment countdown
   useEffect(() => {
@@ -128,28 +141,28 @@ export default function Sales() {
 
   // Calculations
   const subtotal = cartItems.reduce((sum, item) => {
+    const lineDiscount = item.lineDiscount || 0;
     const lineTotal = item.quantity * item.price;
-    const discountedTotal = lineTotal - item.lineDiscount;
+    const discountedTotal = lineTotal - lineDiscount;
     return sum + discountedTotal;
   }, 0);
 
-  const discountedSubtotal = subtotal - cartDiscount;
   const taxAmount = cartItems.reduce((sum, item) => {
-    const lineTotal = (item.quantity * item.price) - item.lineDiscount;
-    return sum + (lineTotal * item.vatRate) / (100 + item.vatRate);
+    const lineDiscount = item.lineDiscount || 0;
+    const vatRate = item.vatRate || 0;
+    const lineTotal = (item.quantity * item.price) - lineDiscount;
+    return sum + (lineTotal * vatRate) / 100;
   }, 0);
-  const grandTotal = discountedSubtotal;
+  const discountedSubtotal = subtotal - cartDiscount;
+  const grandTotal = discountedSubtotal + taxAmount;
   const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const changeDue = Math.max(0, cashReceived - grandTotal);
   const remainingBalance = Math.max(0, grandTotal - totalPaid);
 
   // Additional calculations for POS interface
-  const cartSubtotal = cartItems.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-  const cartVAT = cartItems.reduce((sum, item) => {
-    const lineTotal = item.quantity * item.price;
-    return sum + (lineTotal * item.vatRate) / 100;
-  }, 0);
-  const cartTotal = cartSubtotal + cartVAT - cartDiscount;
+  const cartSubtotal = subtotal;
+  const cartVAT = taxAmount;
+  const cartTotal = grandTotal;
 
   const addItemByISBN = () => {
     if (!availableBook || !availableBook.book_found) return;
@@ -173,6 +186,8 @@ export default function Sales() {
       // Add new item to cart
       const newItem: CartItem = {
         id: Math.random().toString(36).substring(2),
+        edition_id: availableBook.edition_id || "",
+        inventory_id: availableBook.inventory_id || "",
         title: availableBook.title,
         author: availableBook.author,
         isbn: availableBook.isbn_number,
@@ -180,7 +195,7 @@ export default function Sales() {
         price: availableBook.sale_price,
         quantity: 1,
         lineDiscount: 0,
-        vatRate: 16 // Default VAT rate
+        vatRate: defaultVatRate
       };
       setCartItems([...cartItems, newItem]);
     }
@@ -258,16 +273,15 @@ export default function Sales() {
       try {
         // Transform cart items to sale items format
         const saleItems: SaleItem[] = cartItems.map(item => ({
-          // For now using placeholder IDs - in production these should come from the book API
-          edition_id: `edition-${item.id}`,
-          inventory_id: `inventory-${item.id}`,
+          edition_id: item.edition_id,
+          inventory_id: item.inventory_id,
           isbn: item.isbn,
           title: item.title,
           author: item.author,
           quantity_sold: item.quantity,
           price_per_unit: item.price,
           total_price: item.price * item.quantity,
-          tax_amount: (item.price * item.quantity * (item.vatRate || 16)) / 100,
+          tax_amount: ((item.price * item.quantity) - (item.lineDiscount || 0)) * ((item.vatRate || 0) / 100),
           discount_amount: item.lineDiscount || 0
         }));
 
@@ -333,15 +347,15 @@ export default function Sales() {
     try {
       // Transform cart items to sale items format
       const saleItems: SaleItem[] = cartItems.map(item => ({
-        edition_id: `edition-${item.id}`,
-        inventory_id: `inventory-${item.id}`,
+        edition_id: item.edition_id,
+        inventory_id: item.inventory_id,
         isbn: item.isbn,
         title: item.title,
         author: item.author,
         quantity_sold: item.quantity,
         price_per_unit: item.price,
         total_price: item.price * item.quantity,
-        tax_amount: (item.price * item.quantity * (item.vatRate || 16)) / 100,
+        tax_amount: ((item.price * item.quantity) - (item.lineDiscount || 0)) * ((item.vatRate || 0) / 100),
         discount_amount: item.lineDiscount || 0
       }));
 
@@ -399,15 +413,15 @@ export default function Sales() {
     try {
       // Transform cart items to sale items format
       const saleItems: SaleItem[] = cartItems.map(item => ({
-        edition_id: `edition-${item.id}`,
-        inventory_id: `inventory-${item.id}`,
+        edition_id: item.edition_id,
+        inventory_id: item.inventory_id,
         isbn: item.isbn,
         title: item.title,
         author: item.author,
         quantity_sold: item.quantity,
         price_per_unit: item.price,
         total_price: item.price * item.quantity,
-        tax_amount: (item.price * item.quantity * (item.vatRate || 16)) / 100,
+        tax_amount: ((item.price * item.quantity) - (item.lineDiscount || 0)) * ((item.vatRate || 0) / 100),
         discount_amount: item.lineDiscount || 0
       }));
 

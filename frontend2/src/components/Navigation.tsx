@@ -1,12 +1,11 @@
-import { Book, BarChart3, Package, Users, Settings, FileText, Calculator, Shield, Receipt, Boxes, Image } from "lucide-react";
+import { BarChart3, Users, Settings, FileText, Calculator, Shield, Receipt, Boxes } from "lucide-react";
 import { Button } from "./ui/button";
-import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import logo from "@/assets/logo.png"
 
 const navItems = [
-  { icon: BarChart3, label: "Dashboard", href: "/dashboard", active: true, roles: ["admin", "manager", "sales", "finance", "superadmin"] },
+  { icon: BarChart3, label: "Dashboard", href: "/dashboard", roles: ["admin", "manager", "sales", "finance", "superadmin"] },
   { icon: Boxes, label: "Stock Management", href: "/inventory-management", roles: ["admin", "manager"] },
   { icon: Receipt, label: "Purchase Orders", href: "/create-purchase-order", roles: ["admin", "manager"] },
   { icon: Shield, label: "Admin", href: "/admin-dashboard", roles: ["admin"] },
@@ -19,7 +18,12 @@ const navItems = [
 
 export function Navigation() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logOut, role } = useAuth();
+
+  const isActiveRoute = (href: string) => {
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
+  };
 
   const handleNavigate = (href: string) => {
     navigate(href, { replace: true });
@@ -37,11 +41,11 @@ export function Navigation() {
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
               <img
-              src={logo}
-              alt="BookShelf IMS"
-              loading="lazy"
-              height={24}
-              width={24}
+                src={logo}
+                alt="BookShelf IMS"
+                loading="lazy"
+                height={24}
+                width={24}
               />
             </div>
             <div>
@@ -52,27 +56,27 @@ export function Navigation() {
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => 
-            item.roles.includes(role) && (
-              <Button
-                key={item.label}
-                variant={item.active ? "accent" : "ghost"}
-                size="sm"
-                className="gap-2"
-                onClick={() => handleNavigate(item.href)}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.label}
-              </Button>
-            ))}
+            {navItems.map((item) =>
+              item.roles.includes(role) && (
+                <Button
+                  key={item.label}
+                  variant={isActiveRoute(item.href) ? "accent" : "ghost"}
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => handleNavigate(item.href)}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </Button>
+              ))}
           </div>
 
           {/* User Menu */}
           <div className="flex items-center gap-3">
             <Button
-            variant="outline"
-            size="sm"
-            onClick={signOut}
+              variant="outline"
+              size="sm"
+              onClick={signOut}
             >
               Sign Out
             </Button>

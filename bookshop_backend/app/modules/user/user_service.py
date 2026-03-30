@@ -1,8 +1,9 @@
 from ...db.session import SessionDep
-from .user_model import UserCreate
+from .user_model import UserCreate, UserResponse
 from ...utils.result import ServiceResult
 from ...utils.password_manager import hash_password
 from .user_repository import UserRepository
+import uuid
 
 class UserService:
     def __init__(self, db: SessionDep):
@@ -32,6 +33,7 @@ class UserService:
             success=True,
             message="User created successfully"
         )
+
     async def check_email(self, email: str) -> ServiceResult:
         """Check if a user exists by email."""
         try:
@@ -66,3 +68,29 @@ class UserService:
             return ServiceResult(success=True, message="User deleted successfully")
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
+
+    async def list_users_by_tenant(self, tenant_id: uuid.UUID) -> ServiceResult:
+        try:
+            users = await self.repo.list_users_by_tenant(tenant_id)
+            data = [
+                UserResponse.model_validate(user).model_dump()
+                for user in users
+            ]
+            return ServiceResult(success=True, data=data)
+        except Exception as e:
+            return ServiceResult(success=False, error=f"Failed to retrieve users: {str(e)}")
+
+    async def reset_user_password(self, user_id: uuid.UUID, tenant_id: uuid.UUID, new_password: str) -> ServiceResult:
+        try:
+            user = await self.repo.get_user_by_id(user_id)
+            if not user:
+                return ServiceResult(success=False, error="User not found")
+
+            if user.tenant_id != tenant_id:
+                return ServiceResult(success=False, error="You cannot update a user from another bookshop")
+
+            user.password = hash_password(new_password)
+            await self.repo.update_user(user)
+            return ServiceResult(success=True, message="Password updated successfully")
+        except Exception as e:
+            return ServiceResult(success=False, error=f"Failed to reset password: {str(e)}")

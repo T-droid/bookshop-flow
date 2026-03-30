@@ -2,16 +2,22 @@ import apiClient from "@/api/api";
 import { salesApi } from "@/api/salesApi";
 import { NewTaxRate } from "@/schemas/taxSchema";
 import { CreateSaleData } from "@/types/sales";
-import { useMutation } from "@tanstack/react-query";
+import { CreateSupplierInput } from "@/types/supplier";
+import { CreateBookshopUserInput, ResetBookshopUserPasswordInput } from "@/types/user";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export const useCreateTaxRate = () => {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async (data: NewTaxRate) => {
         const response = await apiClient.post("/taxes", data);
         return response.data;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["taxRates"] });
+            queryClient.invalidateQueries({ queryKey: ["defaultTaxRate"] });
             toast.success("Tax rate created successfully");
         },
         onError: (error: any) => {
@@ -68,4 +74,62 @@ export const useCreateSale = () => {
             toast.error(message);
         }
     })
+}
+
+export const useCreateSupplier = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: CreateSupplierInput) => {
+            const response = await apiClient.post("/suppliers/", data);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["supplierDashboard"] });
+            queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+            toast.success("Supplier created successfully");
+        },
+        onError: (error: any) => {
+            const message = error.response?.data?.detail || "Failed to create supplier";
+            toast.error(message);
+        }
+    });
+}
+
+export const useCreateBookshopUser = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (data: CreateBookshopUserInput) => {
+            const response = await apiClient.post("/users", data);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookshopUsers"] });
+            toast.success("User created successfully");
+        },
+        onError: (error: any) => {
+            const message = error.response?.data?.detail || "Failed to create user";
+            toast.error(message);
+        }
+    });
+}
+
+export const useResetBookshopUserPassword = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async ({ user_id, new_password }: ResetBookshopUserPasswordInput) => {
+            const response = await apiClient.patch(`/users/${user_id}/reset-password`, { new_password });
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["bookshopUsers"] });
+            toast.success("Password reset successfully");
+        },
+        onError: (error: any) => {
+            const message = error.response?.data?.detail || "Failed to reset password";
+            toast.error(message);
+        }
+    });
 }

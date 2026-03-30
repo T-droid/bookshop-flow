@@ -72,6 +72,8 @@ class InventoryService:
 
             low_stock = await self.repository.get_low_stock_inventory_items(tenant_id)
 
+            low_stock_items = await self.repository.get_low_stock_items_by_tenant(tenant_id, limit)
+
             total_items = await self.repository.get_total_unique_inventory_items(tenant_id)
 
             top_items = await self.repository.get_top_inventory_items_by_date(tenant_id, limit)
@@ -80,6 +82,7 @@ class InventoryService:
                 "total_value": total_value,
                 "out_of_stock": out_of_stock,
                 "low_stock": low_stock,
+                "low_stock_items": low_stock_items,
                 "total_items": total_items,
                 "top_items": top_items
             }

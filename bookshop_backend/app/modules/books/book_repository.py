@@ -52,11 +52,14 @@ class BookRepository:
             return new_book_edition.edition_id
         
     async def get_book_with_inventory(self, isbn: str, tenant_id: uuid.UUID) -> Union[Dict, None]:
+        normalized_isbn = isbn.replace('-', '').replace(' ', '')
+
         stmt = select(
             models.Book.title,
             models.Book.author,
             models.BookEdition.isbn_number,
             models.BookEdition.edition_id,
+            models.Inventory.inventory_id,
             models.Inventory.cost_price,
             (models.Inventory.quantity_on_hand - models.Inventory.quantity_reserved).label('available_quantity'),
             (models.Inventory.cost_price * (1 + models.Inventory.profit) * (1 - models.Inventory.discount)).label('sale_price')
@@ -67,7 +70,7 @@ class BookRepository:
         ).join(
             models.Inventory, models.BookEdition.edition_id == models.Inventory.edition_id
         ).where(
-            models.BookEdition.isbn_number == isbn,
+            models.BookEdition.isbn_number == normalized_isbn,
             models.Inventory.tenant_id == tenant_id
         )
         result = await self.db.execute(stmt)
@@ -75,6 +78,7 @@ class BookRepository:
         if book_data:
             return {
                 "edition_id": book_data.edition_id,
+                "inventory_id": book_data.inventory_id,
                 "cost_price": book_data.cost_price,
                 "title": book_data.title,
                 "author": book_data.author,
@@ -93,5 +97,3 @@ class BookRepository:
         self.db.add(model)
         await self.db.commit()
         await self.db.refresh(model)
-
-

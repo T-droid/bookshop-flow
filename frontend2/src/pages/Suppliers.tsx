@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AddSupplierModal } from "@/components/AddSupplierModal";
+import { useCreateSupplier } from "@/hooks/useCreateResource";
 import { useGetSupplierDashboard } from "@/hooks/useGetResources";
+import { AddSupplierFormData } from "@/types/supplier";
 
 export default function Suppliers() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -46,11 +48,22 @@ export default function Suppliers() {
   // ];
 
   const { data: supplierDashboard, error: supplierDashboardError, isLoading: loadingSupplierDashboard } = useGetSupplierDashboard();
+  const { mutateAsync: createSupplier, isPending: isCreatingSupplier } = useCreateSupplier();
 
-  const handleAddSuppliers = (newSuppliers) => {
-    // Here you would typically call an API to save the suppliers
-    console.log("Adding suppliers:", newSuppliers);
-    // For now, just close the modal
+  const handleAddSuppliers = async (newSuppliers: AddSupplierFormData[]) => {
+    for (const supplier of newSuppliers) {
+      await createSupplier({
+        name: supplier.name.trim(),
+        contact_person: supplier.contactPerson.trim(),
+        contact_info: supplier.email.trim(),
+        phone_number: supplier.phone.trim(),
+        address: supplier.address.trim() || undefined,
+        category: supplier.category.trim(),
+        payment_terms: supplier.paymentTerms.trim() || undefined,
+        status: supplier.status.toLowerCase(),
+      });
+    }
+
     setIsAddModalOpen(false);
   };
 
@@ -242,10 +255,10 @@ export default function Suppliers() {
                         </td>
                         <td className="p-3">
                           <Badge 
-                            variant={supplier.status === "Active" ? "default" : "secondary"}
-                            className={supplier.status === "Active" ? "bg-accent text-accent-foreground" : ""}
+                            variant={supplier.status.toLowerCase() === "active" ? "default" : "secondary"}
+                            className={supplier.status.toLowerCase() === "active" ? "bg-accent text-accent-foreground" : ""}
                           >
-                            {supplier.status}
+                            {supplier.status.charAt(0).toUpperCase() + supplier.status.slice(1)}
                           </Badge>
                         </td>
                         <td className="p-3">
@@ -272,6 +285,7 @@ export default function Suppliers() {
         isOpen={isAddModalOpen} 
         onClose={() => setIsAddModalOpen(false)}
         onAddSuppliers={handleAddSuppliers}
+        isSubmitting={isCreatingSupplier}
       />
     </AppLayout>
   );

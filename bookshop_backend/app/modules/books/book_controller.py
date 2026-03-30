@@ -61,6 +61,8 @@ async def get_book_by_isbn(
                 detail="Internal server error while processing request"
             )
 
+        print(result.data)
+
         return {
             "success": True,
             "book": result.data,
