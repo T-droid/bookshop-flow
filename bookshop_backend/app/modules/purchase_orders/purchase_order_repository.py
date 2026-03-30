@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, func
 from typing import List, Optional, Union
 import uuid
@@ -178,10 +179,10 @@ class PurchaseOrderRepository:
         ]
 
     async def get_next_order_number(self, tenant_id: uuid.UUID) -> str:
-        """Generate the next order number for a tenant"""
-        # Get the latest order number for this tenant
+        """Generate the next globally unique order number."""
+        # The database enforces a global unique index on order_number,
+        # so numbering must be generated globally rather than per tenant.
         stmt = select(models.PurchaseOrder.order_number).where(
-            models.PurchaseOrder.tenant_id == tenant_id,
             models.PurchaseOrder.order_number.is_not(None)
         ).order_by(models.PurchaseOrder.order_number.desc()).limit(1)
         
@@ -194,17 +195,29 @@ class PurchaseOrderRepository:
         """
         Create a new purchase order in the database.
         """
-        # Generate order number if not provided
-        if not po_data.order_number:
-            po_data.order_number = await self.get_next_order_number(po_data.tenant_id)
-        
-        # Set expected delivery date if not provided
-        data_dict = po_data.dict()
-        if 'expected_delivery_date' not in data_dict or data_dict['expected_delivery_date'] is None:
-            data_dict['expected_delivery_date'] = calculate_expected_delivery_date()
-        
-        db_po = models.PurchaseOrder(**data_dict)
-        return await self.save(db_po)
+        # Retry generation a few times in case two requests race for the next number.
+        for _ in range(3):
+            data_dict = po_data.dict()
+
+            if not po_data.order_number:
+                data_dict["order_number"] = await self.get_next_order_number(po_data.tenant_id)
+            else:
+                data_dict["order_number"] = po_data.order_number
+
+            if 'expected_delivery_date' not in data_dict or data_dict['expected_delivery_date'] is None:
+                data_dict['expected_delivery_date'] = calculate_expected_delivery_date()
+
+            db_po = models.PurchaseOrder(**data_dict)
+
+            try:
+                return await self.save(db_po)
+            except IntegrityError as exc:
+                await self.db.rollback()
+                if "ix_purchaseorder_order_number" not in str(exc.orig):
+                    raise
+                po_data.order_number = None
+
+        raise ValueError("Failed to generate a unique purchase order number after multiple attempts")
 
     async def create_purchase_order_item(self, po_item_data: PurchaseOrderItemCreate) -> models.PurchaseOrderItems:
         """

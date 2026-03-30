@@ -16,12 +16,12 @@ class Payment(BaseModel):
 
 class Sales(BaseModel):
     tenant_id: uuid.UUID = Field(..., alias="tenant_id")
-    customer_name: str = Field(..., max_length=100)
+    customer_name: Optional[str] = Field(None, max_length=100)
     customer_email: Optional[str] = Field(None, max_length=100)
     customer_phone: Optional[str] = Field(None, max_length=15)
     total_amount: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
     amount_received: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
-    change_given: Decimal = Field(..., max_digits=10, decimal_places=2, gt=0)
+    change_given: Decimal = Field(..., max_digits=10, decimal_places=2, ge=0)
     tax: Optional[Decimal] = Field(None, max_digits=10, decimal_places=2, ge=0)
     discount: Optional[Decimal] = Field(None, max_digits=10, decimal_places=2, ge=0)
     sale_date: datetime = Field(default_factory=datetime.now)

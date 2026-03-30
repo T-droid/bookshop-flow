@@ -23,6 +23,7 @@ async def create_purchase_order(
     service = PurchaseOrderService(db)
     result = await service.create_purchase_order(user.tenant_id, purchase_order)
     if not result.success:
+        print(f"**** purchase order creation error: {result.error}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=result.error
