@@ -8,12 +8,21 @@ from app.utils.tokens import SECRET_KEY, ALGORITHM
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-       
+        path = request.url.path.rstrip("/")
         unauthenticated_paths = ["/auth/login", "/auth/refresh"]
 
-        if any(request.url.path.startswith(path) for path in unauthenticated_paths):
+        # Allow M-Pesa callback with or without API gateway prefixes.
+        # Examples:
+        # /sales/mpesa/callback
+        # /api/sales/mpesa/callback
+        # /api/v1/sales/mpesa/callback
+        is_mpesa_callback = path.endswith("/sales/mpesa/callback")
+
+        if is_mpesa_callback or any(path.startswith(p) for p in unauthenticated_paths):
+            print(f"DEBUG: Unauthenticated path accessed: '{path}' - allowing without auth")
             return await call_next(request)
 
+        print(f"DEBUG: Authenticating request for path: '{path}'")
         authorization: str = request.headers.get("Authorization")
 
         if not authorization or not authorization.startswith("Bearer "):

@@ -4,6 +4,9 @@ from typing import List, Optional, Callable
 from pydantic import BaseModel, Field
 import uuid
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Enums for user roles
 class UserRole(str, Enum):
@@ -104,11 +107,25 @@ def require_role(roles: List[UserRole]) -> RoleCheckerFunction:
         async def admin_endpoint(user: CurrentUser = Depends(require_role([UserRole.ADMIN]))):
             return {"message": "Admin access granted"}
     """
-    def role_checker(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    def role_checker(
+        request: Request,
+        user: CurrentUser = Depends(get_current_user)
+    ) -> CurrentUser:
         if user.role not in roles:
+            logger.warning(
+                "Role check failed path=%s user_id=%s role=%s required=%s",
+                request.url.path,
+                user.user_id,
+                user.role,
+                [role.value for role in roles],
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Operation not permitted. Required roles: {[role.value for role in roles]}, user role: {user.role.value}",
+                detail=(
+                    f"Operation not permitted on {request.url.path}. "
+                    f"Required roles: {[role.value for role in roles]}, "
+                    f"user role: {user.role.value}"
+                ),
             )
         return user
 
@@ -228,12 +245,26 @@ def require_permission(permission: Permission) -> RoleCheckerFunction:
     Returns:
         RoleCheckerFunction: Function that checks user permission and returns user if authorized
     """
-    def permission_checker(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    def permission_checker(
+        request: Request,
+        user: CurrentUser = Depends(get_current_user)
+    ) -> CurrentUser:
         user_permissions = ROLE_PERMISSIONS.get(user.role, [])
         if permission not in user_permissions:
+            logger.warning(
+                "Permission check failed path=%s user_id=%s role=%s required=%s user_permissions=%s",
+                request.url.path,
+                user.user_id,
+                user.role,
+                permission.value,
+                [p.value for p in user_permissions],
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Permission denied. Required permission: {permission.value}",
+                detail=(
+                    f"Permission denied on {request.url.path}. "
+                    f"Required permission: {permission.value}"
+                ),
             )
         return user
     
