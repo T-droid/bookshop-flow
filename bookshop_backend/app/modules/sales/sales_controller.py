@@ -387,6 +387,8 @@ async def get_dashboard_summary(
 @router.get("/reports-summary", status_code=status.HTTP_200_OK)
 async def get_reports_summary(
     db: SessionDep,
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     user: CurrentUser = Depends(require_permission(Permission.READ_SALES))
 ):
     """
@@ -395,7 +397,11 @@ async def get_reports_summary(
     """
     try:
         service = SalesService(db)
-        result = await service.get_reports_summary(tenant_id=user.tenant_id)
+        result = await service.get_reports_summary(
+            tenant_id=user.tenant_id,
+            date_from=date_from,
+            date_to=date_to
+        )
 
         if not result.success:
             raise HTTPException(
