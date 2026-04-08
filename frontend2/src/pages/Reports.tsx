@@ -6,8 +6,28 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { useGetInventory, useGetSalesReportsSummary } from "@/hooks/useGetResources";
 import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 const currencyFormatter = new Intl.NumberFormat("en-KE", {
   style: "currency",
@@ -46,6 +66,44 @@ export default function Reports() {
   const lowStockItems = inventoryData?.low_stock_items ?? [];
   const monthlySales = numericSalesReports.monthly_sales;
   const totalInventoryQuantity = inventoryData?.top_items?.reduce((sum, item) => sum + item.stock, 0) ?? 0;
+  const topBestSellers = bestSellers.slice(0, 5);
+
+  const monthlySalesChartData = useMemo(
+    () =>
+      monthlySales.map((item) => ({
+        month: item.month,
+        revenue: item.revenue,
+        transactions: item.transactions,
+        averageOrder: item.transactions ? item.revenue / item.transactions : 0,
+      })),
+    [monthlySales]
+  );
+
+  const inventoryStatusData = useMemo(
+    () => [
+      { status: "Healthy", value: Math.max(0, (inventoryData?.total_items ?? 0) - (inventoryData?.low_stock ?? 0)) },
+      { status: "Low Stock", value: inventoryData?.low_stock ?? 0 },
+      { status: "Out of Stock", value: inventoryData?.out_of_stock ?? 0 },
+    ],
+    [inventoryData]
+  );
+
+  const salesChartConfig = {
+    revenue: { label: "Revenue", color: "hsl(var(--primary))" },
+    transactions: { label: "Transactions", color: "hsl(var(--accent))" },
+    averageOrder: { label: "Average Order", color: "hsl(var(--gold))" },
+  } satisfies ChartConfig;
+
+  const bestSellerChartConfig = {
+    units_sold: { label: "Units Sold", color: "hsl(var(--accent))" },
+  } satisfies ChartConfig;
+
+  const inventoryChartConfig = {
+    value: { label: "Titles", color: "hsl(var(--primary))" },
+    healthy: { label: "Healthy", color: "hsl(var(--primary))" },
+    lowStock: { label: "Low Stock", color: "hsl(var(--gold))" },
+    outOfStock: { label: "Out of Stock", color: "hsl(var(--destructive))" },
+  } satisfies ChartConfig;
 
   return (
     <AppLayout>
@@ -110,6 +168,26 @@ export default function Reports() {
             </div>
 
             <Card className="p-6 bg-card border border-border shadow-card-soft">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Sales Trends (Revenue vs Transactions)</h3>
+              {monthlySalesChartData.length > 0 ? (
+                <ChartContainer config={salesChartConfig} className="h-[320px] w-full">
+                  <LineChart data={monthlySalesChartData}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="left" tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="var(--color-revenue)" strokeWidth={3} dot={false} />
+                    <Line yAxisId="right" type="monotone" dataKey="transactions" stroke="var(--color-transactions)" strokeWidth={2} />
+                  </LineChart>
+                </ChartContainer>
+              ) : (
+                <p className="text-sm text-muted-foreground">No monthly sales trend data available yet.</p>
+              )}
+            </Card>
+
+            <Card className="p-6 bg-card border border-border shadow-card-soft">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Monthly Sales Summary</h3>
                 <Button variant="outline" size="sm" className="gap-2">
@@ -152,6 +230,34 @@ export default function Reports() {
           </TabsContent>
 
           <TabsContent value="bestsellers" className="space-y-6">
+            <Card className="p-6 bg-card border border-border shadow-card-soft">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Top 5 Best Sellers by Units</h3>
+              {topBestSellers.length > 0 ? (
+                <ChartContainer config={bestSellerChartConfig} className="h-[320px] w-full">
+                  <BarChart data={topBestSellers}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      dataKey="title"
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => String(value).slice(0, 14)}
+                    />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip
+                      content={
+                        <ChartTooltipContent
+                          formatter={(value) => <span>{Number(value).toLocaleString()} units</span>}
+                        />
+                      }
+                    />
+                    <Bar dataKey="units_sold" fill="var(--color-units_sold)" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <p className="text-sm text-muted-foreground">No bestseller chart data available yet.</p>
+              )}
+            </Card>
+
             <Card className="p-6 bg-card border border-border shadow-card-soft">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Top Selling Books</h3>
@@ -246,6 +352,41 @@ export default function Reports() {
                   <p className="text-sm text-muted-foreground">Inventory value divided by tracked titles</p>
                 </div>
               </div>
+            </Card>
+
+            <Card className="p-6 bg-card border border-border shadow-card-soft">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Inventory Health Distribution</h3>
+              {inventoryStatusData.some((item) => item.value > 0) ? (
+                <ChartContainer config={inventoryChartConfig} className="h-[320px] w-full">
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    <Pie
+                      data={inventoryStatusData}
+                      dataKey="value"
+                      nameKey="status"
+                      innerRadius={60}
+                      outerRadius={110}
+                      paddingAngle={3}
+                    >
+                      {inventoryStatusData.map((entry) => (
+                        <Cell
+                          key={entry.status}
+                          fill={
+                            entry.status === "Healthy"
+                              ? "var(--color-healthy)"
+                              : entry.status === "Low Stock"
+                                ? "var(--color-lowStock)"
+                                : "var(--color-outOfStock)"
+                          }
+                        />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
+              ) : (
+                <p className="text-sm text-muted-foreground">No inventory distribution data available yet.</p>
+              )}
             </Card>
           </TabsContent>
 
