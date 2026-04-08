@@ -20,6 +20,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import InventoryManagement from "./pages/InventoryManagement";
 import { NotificationProvider } from "./components/NotificationProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
+import Help from "./pages/Help";
+import FAQ from "./pages/FAQ";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +91,18 @@ const App = () => (
               <Route path="/settings" element={
                 <ProtectedRoute roles={["admin", "manager"]}>
                   <Settings />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/help" element={
+                <ProtectedRoute roles={["admin", "manager", "sales", "finance", "superadmin"]}>
+                  <Help />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/faq" element={
+                <ProtectedRoute roles={["admin", "manager", "sales", "finance", "superadmin"]}>
+                  <FAQ />
                 </ProtectedRoute>
               } />
 

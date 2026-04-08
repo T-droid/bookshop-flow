@@ -77,3 +77,25 @@ export interface SalesReportsSummary {
   monthly_sales: MonthlySalesReportItem[];
   best_sellers: BestSellerReportItem[];
 }
+
+// --- KCB Buni M-Pesa STK Push Types ---
+
+export interface STKPushRequest {
+  phone_number: string;
+  amount: number;
+  sale_data: CreateSaleData;
+}
+
+export interface STKPushResponse {
+  checkout_request_id: string;
+  invoice_number: string;
+  status: string;
+  message: string;
+}
+
+export interface STKPushStatusResponse {
+  checkout_request_id: string;
+  status: 'pending' | 'completed' | 'failed' | 'expired';
+  message?: string;
+  sale_id?: string;
+}

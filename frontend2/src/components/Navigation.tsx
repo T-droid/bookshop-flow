@@ -14,6 +14,8 @@ const navItems = [
   { icon: BarChart3, label: "Reports", href: "/reports", roles: ["admin", "manager", "sales"] },
   { icon: Calculator, label: "Tax Settings", href: "/tax-settings", roles: ["admin", "manager", "finance"] },
   { icon: Settings, label: "Settings", href: "/settings", roles: ["admin", "manager"] },
+  { icon: FileText, label: "Help", href: "/help", roles: ["admin", "manager", "sales", "finance", "superadmin"] },
+  { icon: FileText, label: "FAQ", href: "/faq", roles: ["admin", "manager", "sales", "finance", "superadmin"] },
 ];
 
 export function Navigation() {

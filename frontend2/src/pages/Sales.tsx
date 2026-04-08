@@ -1,26 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  ShoppingCart, 
-  Plus, 
-  Trash2, 
-  Receipt, 
-  Scan, 
-  CreditCard, 
-  Smartphone, 
-  Clock, 
-  User, 
-  Settings, 
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  ShoppingCart,
+  Plus,
+  Trash2,
+  Receipt,
+  Scan,
+  Smartphone,
+  Clock,
+  User,
+  Settings,
   Pause,
   X,
   Minus,
   Search,
   CheckCircle,
-  QrCode,
   Camera,
   Wifi,
   WifiOff,
   Banknote,
-  Loader2
+  Loader2,
+  Send,
+  AlertCircle,
+  Phone
 } from "lucide-react";
 import { motion } from 'framer-motion';
 import { AppLayout } from "@/components/AppLayout";
@@ -46,18 +47,18 @@ import { useGetDefaultTaxRate } from '@/hooks/useGetResources';
 
 
 interface PaymentMethod {
-  type: 'cash' | 'card' | 'mpesa';
+  type: 'cash' | 'mpesa';
   amount: number;
   reference?: string;
   status?: 'pending' | 'completed' | 'failed';
 }
 
-interface QRPaymentStatus {
-  isGenerating: boolean;
-  qrCode: string | null;
-  status: 'idle' | 'generating' | 'pending' | 'success' | 'failed' | 'expired';
-  countdown: number;
-  amount: number;
+interface STKPushState {
+  status: 'idle' | 'sending' | 'waiting' | 'completed' | 'failed' | 'expired';
+  checkoutRequestId: string | null;
+  invoiceNumber: string | null;
+  message: string | null;
+  saleId: string | null;
 }
 
 export default function Sales() {
@@ -78,18 +79,17 @@ export default function Sales() {
   const [isOnline, setIsOnline] = useState(true);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
   const [mpesaPhone, setMpesaPhone] = useState('');
-  const [qrPaymentStatus, setQrPaymentStatus] = useState<'idle' | 'generating' | 'ready' | 'processing'>('idle');
+  const [stkPushState, setStkPushState] = useState<STKPushState>({
+    status: 'idle',
+    checkoutRequestId: null,
+    invoiceNumber: null,
+    message: null,
+    saleId: null,
+  });
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     phone: '',
     email: ''
-  });
-  const [qrPayment, setQrPayment] = useState<QRPaymentStatus>({
-    isGenerating: false,
-    qrCode: null,
-    status: 'idle',
-    countdown: 0,
-    amount: 0
   });
   const [payments, setPayments] = useState<PaymentMethod[]>([]);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
@@ -123,21 +123,48 @@ export default function Sales() {
     );
   }, [defaultVatRate]);
 
-  // QR Payment countdown
+  // Poll STK Push status when waiting for payment
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (qrPayment.status === 'pending' && qrPayment.countdown > 0) {
-      interval = setInterval(() => {
-        setQrPayment(prev => ({
-          ...prev,
-          countdown: prev.countdown - 1
-        }));
-      }, 1000);
-    } else if (qrPayment.countdown === 0 && qrPayment.status === 'pending') {
-      setQrPayment(prev => ({ ...prev, status: 'expired' }));
+    if (stkPushState.status === 'waiting' && stkPushState.invoiceNumber) {
+      interval = setInterval(async () => {
+        try {
+          const statusRes = await salesApi.checkStkPushStatus(stkPushState.invoiceNumber!);
+          if (statusRes.status === 'completed') {
+            setStkPushState(prev => ({
+              ...prev,
+              status: 'completed',
+              message: statusRes.message || 'Payment confirmed!',
+              saleId: statusRes.sale_id || null,
+            }));
+            toast.success(`M-Pesa payment confirmed! Sale ID: ${statusRes.sale_id}`);
+            clearCart();
+            setMpesaPhone('');
+            setIsProcessingSale(false);
+          } else if (statusRes.status === 'failed') {
+            setStkPushState(prev => ({
+              ...prev,
+              status: 'failed',
+              message: statusRes.message || 'Payment failed.',
+            }));
+            toast.error(statusRes.message || 'M-Pesa payment failed.');
+            setIsProcessingSale(false);
+          } else if (statusRes.status === 'expired') {
+            setStkPushState(prev => ({
+              ...prev,
+              status: 'expired',
+              message: 'Payment request expired. Please try again.',
+            }));
+            toast.error('M-Pesa payment request expired.');
+            setIsProcessingSale(false);
+          }
+        } catch (err) {
+          console.error('Error polling STK push status:', err);
+        }
+      }, 3000); // Poll every 3 seconds
     }
     return () => clearInterval(interval);
-  }, [qrPayment.status, qrPayment.countdown]);
+  }, [stkPushState.status, stkPushState.invoiceNumber]);
 
   // Calculations
   const subtotal = cartItems.reduce((sum, item) => {
@@ -176,9 +203,9 @@ export default function Sales() {
         updateQuantity(existingItem.id, existingItem.quantity + 1);
       } else {
         // Show error - insufficient stock
-        setError('isbn', { 
-          type: 'manual', 
-          message: `Cannot add more - only ${availableBook.available_quantity} in stock` 
+        setError('isbn', {
+          type: 'manual',
+          message: `Cannot add more - only ${availableBook.available_quantity} in stock`
         });
         return;
       }
@@ -199,12 +226,12 @@ export default function Sales() {
       };
       setCartItems([...cartItems, newItem]);
     }
-    
+
     // Clear the form and reset validation
     setValue('isbn', '');
     clearErrors('isbn');
     setAvailableBook(null);
-    
+
     // Focus back to input for next scan
     if (isbnInputRef.current) {
       isbnInputRef.current.focus();
@@ -216,8 +243,8 @@ export default function Sales() {
       removeItem(id);
       return;
     }
-    setCartItems(items => 
-      items.map(item => 
+    setCartItems(items =>
+      items.map(item =>
         item.id === id ? { ...item, quantity: newQuantity } : item
       )
     );
@@ -229,7 +256,7 @@ export default function Sales() {
 
   const holdSale = () => {
     if (cartItems.length === 0) return;
-    
+
     const heldSale = {
       id: Date.now().toString(),
       items: [...cartItems],
@@ -255,21 +282,21 @@ export default function Sales() {
     setCartNotes('');
     setPayments([]);
     setCashReceived(0);
-    setQrPayment({
-      isGenerating: false,
-      qrCode: null,
+    setStkPushState({
       status: 'idle',
-      countdown: 0,
-      amount: 0
+      checkoutRequestId: null,
+      invoiceNumber: null,
+      message: null,
+      saleId: null,
     });
   };
 
-  const { mutateAsync: createSale, isPending} = useCreateSale();
+  const { mutateAsync: createSale, isPending } = useCreateSale();
 
   const processCashPayment = async () => {
     if (cashReceived >= cartTotal && cartItems.length > 0) {
       setIsProcessingSale(true);
-      
+
       try {
         // Transform cart items to sale items format
         const saleItems: SaleItem[] = cartItems.map(item => ({
@@ -310,14 +337,14 @@ export default function Sales() {
 
         // Create the sale via API
         const result = await createSale(saleData);
-        
+
         toast.success(`Sale completed successfully! Sale ID: ${result.sale_id}`);
         console.log('Sale created:', result);
-        
+
         // Clear the cart after successful sale
         clearCart();
         setCashReceived(0);
-        
+
       } catch (error) {
         console.error('Error processing sale:', error);
         toast.error('Failed to process sale. Please try again.');
@@ -327,23 +354,12 @@ export default function Sales() {
     }
   };
 
-  const generateMpesaQR = async () => {
+  const initiateMpesaStkPush = async () => {
     if (cartItems.length === 0 || !mpesaPhone) return;
-    
-    setQrPaymentStatus('generating');
-    
-    // Simulate QR generation for 2 seconds, then allow payment processing
-    setTimeout(() => {
-      setQrPaymentStatus('ready');
-    }, 2000);
-  };
 
-  const processMpesaPayment = async () => {
-    if (cartItems.length === 0) return;
-    
     setIsProcessingSale(true);
-    setQrPaymentStatus('processing');
-    
+    setStkPushState(prev => ({ ...prev, status: 'sending', message: null }));
+
     try {
       // Transform cart items to sale items format
       const saleItems: SaleItem[] = cartItems.map(item => ({
@@ -385,84 +401,46 @@ export default function Sales() {
         sale_status: 'completed'
       };
 
-      // Create the sale via API
-      const result = await salesApi.createSale(saleData);
-      
-      toast.success(`M-Pesa payment completed! Sale ID: ${result.sale_id}`);
-      console.log('M-Pesa sale created:', result);
-      
-      // Clear the cart after successful sale
-      clearCart();
-      setMpesaPhone('');
-      setQrPaymentStatus('idle');
-      
-    } catch (error) {
-      console.error('Error processing M-Pesa sale:', error);
-      toast.error('Failed to process M-Pesa payment. Please try again.');
-      setQrPaymentStatus('ready');
-    } finally {
+      // Initiate STK Push via backend -> KCB Buni API
+      const result = await salesApi.initiateStkPush({
+        phone_number: mpesaPhone,
+        amount: cartTotal,
+        sale_data: saleData,
+      });
+
+      // Move to waiting state — polling useEffect will take over
+      setStkPushState({
+        status: 'waiting',
+        checkoutRequestId: result.checkout_request_id,
+        invoiceNumber: result.invoice_number,
+        message: result.message,
+        saleId: null,
+      });
+
+      toast.info('STK Push sent! Check your phone to complete payment.');
+
+    } catch (error: any) {
+      console.error('Error initiating STK push:', error);
+      const errorMessage = error?.response?.data?.detail || 'Failed to send STK push. Please try again.';
+      setStkPushState(prev => ({
+        ...prev,
+        status: 'failed',
+        message: errorMessage,
+      }));
+      toast.error(errorMessage);
       setIsProcessingSale(false);
     }
   };
 
-  const processCardPayment = async () => {
-    if (cartItems.length === 0) return;
-    
-    setIsProcessingSale(true);
-    
-    try {
-      // Transform cart items to sale items format
-      const saleItems: SaleItem[] = cartItems.map(item => ({
-        edition_id: item.edition_id,
-        inventory_id: item.inventory_id,
-        isbn: item.isbn,
-        title: item.title,
-        author: item.author,
-        quantity_sold: item.quantity,
-        price_per_unit: item.price,
-        total_price: item.price * item.quantity,
-        tax_amount: ((item.price * item.quantity) - (item.lineDiscount || 0)) * ((item.vatRate || 0) / 100),
-        discount_amount: item.lineDiscount || 0
-      }));
-
-      // Prepare customer data
-      const customer: Customer | undefined = customerInfo.name ? {
-        customer_name: customerInfo.name,
-        customer_email: customerInfo.email || undefined,
-        customer_phone: customerInfo.phone || undefined
-      } : undefined;
-
-      // Prepare payment data
-      const payment: Payment = {
-        payment_method: 'card',
-        amount_received: cartTotal,
-        change_given: 0
-      };
-
-      // Prepare sale data
-      const saleData: CreateSaleData = {
-        customer,
-        sale_items: saleItems,
-        payment,
-        total_amount: cartTotal,
-        sale_status: 'completed'
-      };
-
-      // Create the sale via API
-      const result = await salesApi.createSale(saleData);
-      
-      toast.success(`Card payment completed! Sale ID: ${result.sale_id}`);
-      console.log('Card sale created:', result);
-      
-      // Clear the cart after successful sale
-      clearCart();
-      
-    } catch (error) {
-      console.error('Error processing card sale:', error);
-      toast.error('Failed to process card payment. Please try again.');
-    } finally {
-      setIsProcessingSale(false);
-    }
+  const resetStkPush = () => {
+    setStkPushState({
+      status: 'idle',
+      checkoutRequestId: null,
+      invoiceNumber: null,
+      message: null,
+      saleId: null,
+    });
+    setIsProcessingSale(false);
   };
 
   const deleteSale = (saleId: string) => {
@@ -484,7 +462,7 @@ export default function Sales() {
 
   // const completeSale = () => {
   //   if (remainingBalance > 0) return;
-    
+
   //   // Simulate sale completion
   //   console.log('Sale completed:', {
   //     items: cartItems,
@@ -492,7 +470,7 @@ export default function Sales() {
   //     payments: payments,
   //     timestamp: new Date()
   //   });
-    
+
   //   // Show receipt and clear cart
   //   alert('Sale completed successfully! Receipt generated.');
   //   clearCart();
@@ -520,9 +498,9 @@ export default function Sales() {
         setTriggerBookCheck(true);
       } else if (isbnValue && isbnValue.length < 10) {
         // Set validation error for short ISBN
-        setError('isbn', { 
-          type: 'manual', 
-          message: 'ISBN must be at least 10 characters' 
+        setError('isbn', {
+          type: 'manual',
+          message: 'ISBN must be at least 10 characters'
         });
         setTriggerBookCheck(false);
       } else {
@@ -533,7 +511,7 @@ export default function Sales() {
     }, 300);
 
     debounced();
-    
+
     return () => {
       debounced.cancel();
     };
@@ -543,7 +521,7 @@ export default function Sales() {
   useEffect(() => {
     if (bookData && triggerBookCheck) {
       setTriggerBookCheck(false);
-      
+
       if (bookData.success && bookData.book.book_found) {
         // Book found - clear any errors and add to cart
         clearErrors('isbn');
@@ -551,16 +529,16 @@ export default function Sales() {
         addItemByISBN();
       } else if (bookData.success && !bookData.book.book_found) {
         // Book not found - show appropriate error
-        setError('isbn', { 
-          type: 'manual', 
-          message: 'Book not found - search catalog?' 
+        setError('isbn', {
+          type: 'manual',
+          message: 'Book not found - search catalog?'
         });
       } else if (!bookData.success) {
         console.log(bookData);
         // API error - show server error
-        setError('isbn', { 
-          type: 'manual', 
-          message: 'Server error - please try again' 
+        setError('isbn', {
+          type: 'manual',
+          message: 'Server error - please try again'
         });
       }
     }
@@ -595,9 +573,9 @@ export default function Sales() {
                   <p className="text-sm text-muted-foreground">Point of Sale System</p>
                 </div>
               </div>
-              
+
               <Separator orientation="vertical" className="h-8" />
-              
+
               <div className="flex items-center gap-3">
                 <User className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">{cashierName}</span>
@@ -626,17 +604,17 @@ export default function Sales() {
                   {isOnline ? 'Online' : 'Offline'}
                 </span>
               </div>
-              
+
               <Button variant="outline" size="sm" onClick={() => setShowHeldSales(true)}>
                 <Pause className="w-4 h-4 mr-1" />
                 Held Sales ({heldSales.length})
               </Button>
-              
+
               <Button variant="outline" size="sm">
                 <Receipt className="w-4 h-4 mr-1" />
                 Reprint
               </Button>
-              
+
               <Button variant="outline" size="sm">
                 <Settings className="w-4 h-4" />
               </Button>
@@ -647,10 +625,10 @@ export default function Sales() {
         {/* Main Content */}
         <div className="container mx-auto px-6 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
-            
+
             {/* Left Panel: Item Entry & Cart */}
             <div className="lg:col-span-2 space-y-6">
-              
+
               {/* ISBN Entry */}
               <Card className="shadow-card-soft border border-border">
                 <CardHeader className="pb-4">
@@ -671,28 +649,28 @@ export default function Sales() {
                         className="text-lg"
                       />
                     </div>
-                    <Button 
-                      variant="accent" 
+                    <Button
+                      variant="accent"
                       onClick={handleSubmit(addItemByISBN)}
                       disabled={!isbnValue}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setValue('isbn', '')}
                     >
                       Clear
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setShowScanner(true)}
                     >
                       <Camera className="w-4 h-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={() => setShowSearch(true)}
                     >
                       <Search className="w-4 h-4" />
@@ -706,7 +684,7 @@ export default function Sales() {
                       {getStockBadge(availableBook.available_quantity, 1)}
                     </SuccessMessage>
                   )}
-                  
+
                   {/* {isbnInput && (
                     <div className="mt-3">
                       {findBookByISBN(isbnInput) ? (
@@ -735,18 +713,18 @@ export default function Sales() {
                       Cart ({cartItems.length} items)
                     </CardTitle>
                     <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={holdSale}
                         disabled={cartItems.length === 0}
                       >
                         <Pause className="w-4 h-4 mr-1" />
                         Hold Sale
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={clearCart}
                         disabled={cartItems.length === 0}
                       >
@@ -779,10 +757,10 @@ export default function Sales() {
                             <p className="text-xs text-muted-foreground font-mono">{item.isbn}</p>
                             {getStockBadge(item.StockLevel, item.quantity)}
                           </div>
-                          
+
                           <div className="flex items-center gap-2">
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -790,8 +768,8 @@ export default function Sales() {
                               <Minus className="w-3 h-3" />
                             </Button>
                             <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
@@ -800,16 +778,16 @@ export default function Sales() {
                               <Plus className="w-3 h-3" />
                             </Button>
                           </div>
-                          
+
                           <div className="text-right">
                             <p className="text-sm text-muted-foreground">@ Ksh {item.price.toLocaleString()}</p>
                             <p className="font-semibold text-foreground">
                               Ksh {(item.quantity * item.price).toLocaleString()}
                             </p>
                           </div>
-                          
-                          <Button 
-                            variant="ghost" 
+
+                          <Button
+                            variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => removeItem(item.id)}
@@ -818,7 +796,7 @@ export default function Sales() {
                           </Button>
                         </motion.div>
                       ))}
-                      
+
                       {/* Cart Notes */}
                       <div className="pt-4 border-t">
                         <Label className="text-sm font-medium text-foreground">Order Notes</Label>
@@ -837,7 +815,7 @@ export default function Sales() {
 
             {/* Right Panel: Payment & Summary */}
             <div className="space-y-6">
-              
+
               {/* Order Summary */}
               <Card className="shadow-card-soft border border-border">
                 <CardHeader className="pb-4">
@@ -852,24 +830,24 @@ export default function Sales() {
                       <span className="text-muted-foreground">Items ({cartItems.reduce((sum, item) => sum + item.quantity, 0)}):</span>
                       <span className="text-foreground">Ksh {cartSubtotal.toLocaleString()}</span>
                     </div>
-                    
+
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Discount:</span>
                       <span className="text-green-600">-Ksh {cartDiscount.toLocaleString()}</span>
                     </div>
-                    
+
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">VAT (16%):</span>
                       <span className="text-foreground">Ksh {cartVAT.toLocaleString()}</span>
                     </div>
-                    
+
                     <Separator />
-                    
+
                     <div className="flex justify-between text-lg font-bold">
                       <span className="text-foreground">Total:</span>
                       <span className="text-foreground">Ksh {cartTotal.toLocaleString()}</span>
                     </div>
-                    
+
                     {customerInfo.name && (
                       <div className="mt-4 p-3 bg-muted/30 rounded-lg border">
                         <p className="text-sm font-medium text-foreground">{customerInfo.name}</p>
@@ -889,13 +867,13 @@ export default function Sales() {
               <Card className="shadow-card-soft border border-border">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
+                    <Banknote className="w-5 h-5" />
                     Payment Method
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Tabs value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
-                    <TabsList className="grid grid-cols-3 w-full">
+                    <TabsList className="grid grid-cols-2 w-full">
                       <TabsTrigger value="cash" className="flex items-center gap-1">
                         <Banknote className="w-4 h-4" />
                         Cash
@@ -903,10 +881,6 @@ export default function Sales() {
                       <TabsTrigger value="mpesa" className="flex items-center gap-1">
                         <Smartphone className="w-4 h-4" />
                         M-Pesa
-                      </TabsTrigger>
-                      <TabsTrigger value="card" className="flex items-center gap-1">
-                        <CreditCard className="w-4 h-4" />
-                        Card
                       </TabsTrigger>
                     </TabsList>
 
@@ -932,9 +906,9 @@ export default function Sales() {
                           </div>
                         )}
                       </div>
-                      <Button 
-                        variant="premium" 
-                        className="w-full" 
+                      <Button
+                        variant="premium"
+                        className="w-full"
                         size="lg"
                         onClick={processCashPayment}
                         disabled={cartItems.length === 0 || cashReceived < cartTotal || isProcessingSale}
@@ -954,120 +928,120 @@ export default function Sales() {
                     </TabsContent>
 
                     {/* M-Pesa Payment */}
+                    {/* M-Pesa STK Push Payment */}
                     <TabsContent value="mpesa" className="space-y-4">
-                      <div>
-                        <Label className="text-sm font-medium text-foreground">Customer Phone Number</Label>
-                        <Input
-                          type="tel"
-                          placeholder="254XXXXXXXXX"
-                          value={mpesaPhone}
-                          onChange={(e) => setMpesaPhone(e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      {qrPaymentStatus === 'idle' && (
-                        <Button 
-                          variant="accent" 
-                          className="w-full" 
-                          size="lg"
-                          onClick={generateMpesaQR}
-                          disabled={cartItems.length === 0 || !mpesaPhone}
-                        >
-                          <QrCode className="w-4 h-4 mr-2" />
-                          Generate M-Pesa QR Code
-                        </Button>
+                      {stkPushState.status === 'idle' && (
+                        <>
+                          <div>
+                            <Label className="text-sm font-medium text-foreground">Customer Phone Number</Label>
+                            <div className="relative mt-1">
+                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input
+                                type="tel"
+                                placeholder="0712345678 or 254712345678"
+                                value={mpesaPhone}
+                                onChange={(e) => setMpesaPhone(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Enter number in any format: 07XX, +254XX, or 254XX
+                            </p>
+                          </div>
+
+                          <div className="p-3 bg-muted/30 rounded-lg border">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Amount to pay:</span>
+                              <span className="font-bold text-foreground">Ksh {cartTotal.toLocaleString()}</span>
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="accent"
+                            className="w-full"
+                            size="lg"
+                            onClick={initiateMpesaStkPush}
+                            disabled={cartItems.length === 0 || !mpesaPhone || isProcessingSale}
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            Send STK Push
+                          </Button>
+                        </>
                       )}
-                      
-                      {qrPaymentStatus === 'generating' && (
-                        <div className="text-center py-4">
-                          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-accent" />
-                          <p className="text-sm text-muted-foreground">Generating QR Code...</p>
+
+                      {stkPushState.status === 'sending' && (
+                        <div className="text-center py-6">
+                          <Loader2 className="w-10 h-10 animate-spin mx-auto mb-3 text-accent" />
+                          <p className="text-sm font-medium text-foreground">Sending STK Push...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Please wait</p>
                         </div>
                       )}
-                      
-                      {qrPaymentStatus === 'ready' && (
-                        <div className="text-center space-y-4">
-                          <div className="bg-white p-4 rounded-lg border-2 border-accent inline-block">
-                            <QrCode className="w-32 h-32 text-foreground mx-auto" />
+
+                      {stkPushState.status === 'waiting' && (
+                        <div className="text-center py-6 space-y-4">
+                          <div className="relative">
+                            <Loader2 className="w-12 h-12 animate-spin mx-auto text-accent" />
+                            <Smartphone className="w-5 h-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-accent" />
                           </div>
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium text-foreground">Scan QR Code to Pay</p>
-                            <p className="text-xs text-muted-foreground">Customer should scan with M-Pesa app</p>
-                            <p className="text-lg font-bold text-accent">Ksh {cartTotal.toLocaleString()}</p>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-foreground">Waiting for M-Pesa confirmation</p>
+                            <p className="text-xs text-muted-foreground">Customer should enter their M-Pesa PIN on their phone</p>
+                            <p className="text-lg font-bold text-accent mt-2">Ksh {cartTotal.toLocaleString()}</p>
                           </div>
-                          <div className="space-y-2">
-                            <Button 
-                              variant="accent" 
-                              className="w-full"
-                              onClick={processMpesaPayment}
-                              disabled={isProcessingSale}
-                            >
-                              {isProcessingSale ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Processing Payment...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Complete M-Pesa Payment
-                                </>
-                              )}
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              onClick={() => setQrPaymentStatus('idle')}
-                              disabled={isProcessingSale}
-                            >
-                              Cancel QR Payment
-                            </Button>
+                          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                            <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                            Polling for payment status...
                           </div>
-                        </div>
-                      )}
-                      
-                      {qrPaymentStatus === 'processing' && (
-                        <div className="text-center py-4">
-                          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-accent" />
-                          <p className="text-sm text-muted-foreground">Processing payment...</p>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-2"
-                            onClick={() => setQrPaymentStatus('idle')}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={resetStkPush}
                           >
                             Cancel
                           </Button>
                         </div>
                       )}
-                    </TabsContent>
 
-                    {/* Card Payment */}
-                    <TabsContent value="card" className="space-y-4">
-                      <div className="text-center py-8 text-muted-foreground">
-                        <CreditCard className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                        <p className="text-sm">Insert or swipe card</p>
-                        <p className="text-xs">Follow prompts on card reader</p>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        className="w-full" 
-                        size="lg"
-                        onClick={processCardPayment}
-                        disabled={cartItems.length === 0 || isProcessingSale}
-                      >
-                        {isProcessingSale ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Processing Payment...
-                          </>
-                        ) : (
-                          <>
-                            <CreditCard className="w-4 h-4 mr-2" />
-                            Process Card Payment
-                          </>
-                        )}
-                      </Button>
+                      {stkPushState.status === 'completed' && (
+                        <div className="text-center py-6 space-y-4">
+                          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                            <CheckCircle className="w-10 h-10 text-green-600" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-green-700">Payment Confirmed!</p>
+                            <p className="text-xs text-muted-foreground">{stkPushState.message}</p>
+                            {stkPushState.saleId && (
+                              <p className="text-xs text-muted-foreground">Sale ID: {stkPushState.saleId}</p>
+                            )}
+                          </div>
+                          <Button
+                            variant="accent"
+                            onClick={resetStkPush}
+                          >
+                            New Sale
+                          </Button>
+                        </div>
+                      )}
+
+                      {(stkPushState.status === 'failed' || stkPushState.status === 'expired') && (
+                        <div className="text-center py-6 space-y-4">
+                          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+                            <AlertCircle className="w-10 h-10 text-red-600" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-red-700">
+                              {stkPushState.status === 'expired' ? 'Payment Expired' : 'Payment Failed'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{stkPushState.message}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={resetStkPush}
+                          >
+                            Try Again
+                          </Button>
+                        </div>
+                      )}
                     </TabsContent>
                   </Tabs>
                 </CardContent>
@@ -1087,7 +1061,7 @@ export default function Sales() {
                     <Input
                       placeholder="Customer name..."
                       value={customerInfo.name}
-                      onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })}
                       className="mt-1"
                     />
                   </div>
@@ -1096,7 +1070,7 @@ export default function Sales() {
                     <Input
                       placeholder="Customer phone..."
                       value={customerInfo.phone}
-                      onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
                       className="mt-1"
                     />
                   </div>
@@ -1105,7 +1079,7 @@ export default function Sales() {
                     <Input
                       placeholder="Customer email..."
                       value={customerInfo.email}
-                      onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
                       className="mt-1"
                     />
                   </div>

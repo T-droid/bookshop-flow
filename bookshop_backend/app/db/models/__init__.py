@@ -23,6 +23,7 @@ from .receipt_templates import ReceiptTemplates
 # Import transaction-related models
 from .sales import Sales
 from .sale_items import SaleItems
+from .payments import Payments
 from .purchase_orders import PurchaseOrder
 from .purchase_order_items import PurchaseOrderItems
 from .monthly_sales_summary import MonthlySalesSummary
@@ -51,6 +52,7 @@ __all__ = [
     "ReceiptTemplates",
     "Sales",
     "SaleItems",
+    "Payments",
     "PurchaseOrder",
     "PurchaseOrderItems",
     "MonthlySalesSummary",

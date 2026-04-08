@@ -1,5 +1,5 @@
 import apiClient from './api';
-import { CreateSaleResponse, SaleResponse, CreateSaleData } from '@/types/sales';
+import { CreateSaleResponse, SaleResponse, CreateSaleData, STKPushRequest, STKPushResponse, STKPushStatusResponse } from '@/types/sales';
 
 export const salesApi = {
   // Create a new sale
@@ -36,5 +36,17 @@ export const salesApi = {
   // Print receipt for a sale
   printReceipt: async (saleId: string): Promise<void> => {
     await apiClient.post(`/sales/${saleId}/receipt`);
-  }
+  },
+
+  // Initiate M-Pesa STK Push via KCB Buni API
+  initiateStkPush: async (data: STKPushRequest): Promise<STKPushResponse> => {
+    const response = await apiClient.post(`/sales/mpesa/stkpush`, data);
+    return response.data;
+  },
+
+  // Check STK Push payment status (polling)
+  checkStkPushStatus: async (invoiceNumber: string): Promise<STKPushStatusResponse> => {
+    const response = await apiClient.get(`/sales/mpesa/status/${invoiceNumber}`);
+    return response.data;
+  },
 };

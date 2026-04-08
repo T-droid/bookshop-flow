@@ -7,6 +7,7 @@ from decimal import Decimal
 if TYPE_CHECKING:
     from .tenants import Tenant
     from .sale_items import SaleItems
+    from .payments import Payments
 
 class Sales(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -26,6 +27,7 @@ class Sales(SQLModel, table=True):
     # Relationships
     tenant: "Tenant" = Relationship(back_populates="sales")
     sale_items: List["SaleItems"] = Relationship(back_populates="sale", cascade_delete=True)
+    payments: List["Payments"] = Relationship(back_populates="sale")
     
     def __repr__(self):
         return f"Sales(id={self.id}, tenant_id={self.tenant_id}, sale_date={self.sale_date}, total_amount={self.total_amount})"

@@ -3,14 +3,34 @@ from sqlmodel import select, func
 import uuid
 from .sales_model import Sales, SaleItem
 from ...db import models
-from typing import Union, List
-from datetime import datetime
+from typing import Union
+from datetime import datetime, time
 from decimal import Decimal
 
 
 class SalesRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    def _normalize_date_range(self, date_from: str = None, date_to: str = None):
+        start_dt = None
+        end_dt = None
+
+        if date_from:
+            parsed_from = datetime.fromisoformat(date_from)
+            # If a date string is provided, treat it as start of day.
+            if "T" not in date_from:
+                parsed_from = datetime.combine(parsed_from.date(), time.min)
+            start_dt = parsed_from
+
+        if date_to:
+            parsed_to = datetime.fromisoformat(date_to)
+            # If a date string is provided, include the full day.
+            if "T" not in date_to:
+                parsed_to = datetime.combine(parsed_to.date(), time.max)
+            end_dt = parsed_to
+
+        return start_dt, end_dt
 
     async def get_sale_by_id(self, sale_id: uuid.UUID, tenant_id: uuid.UUID) -> models.Sales | None:
         stmt = select(models.Sales).where(
@@ -128,35 +148,65 @@ class SalesRepository:
             "recent_sales": recent_sales or []
         }
 
-    async def get_reports_summary(self, tenant_id: uuid.UUID):
+    async def get_reports_summary(self, tenant_id: uuid.UUID, date_from: str = None, date_to: str = None):
+        start_dt, end_dt = self._normalize_date_range(date_from=date_from, date_to=date_to)
+
         total_stmt = select(
             func.count(models.Sales.id),
             func.coalesce(func.sum(models.Sales.total_amount), 0)
         ).where(models.Sales.tenant_id == tenant_id)
+
+        if start_dt:
+            total_stmt = total_stmt.where(models.Sales.created_at >= start_dt)
+        if end_dt:
+            total_stmt = total_stmt.where(models.Sales.created_at <= end_dt)
+
         total_result = await self.db.execute(total_stmt)
         total_transactions, total_revenue = total_result.one()
 
+        dialect_name = self.db.bind.dialect.name if self.db.bind else ""
+        is_sqlite = dialect_name == "sqlite"
+
+        if is_sqlite:
+            month_expr = func.strftime("%Y-%m-01", models.Sales.created_at)
+        else:
+            month_expr = func.date_trunc("month", models.Sales.created_at)
+
+        monthly_stmt = select(
+            month_expr.label("month_start"),
+            func.coalesce(func.sum(models.Sales.total_amount), 0).label("revenue"),
+            func.count(models.Sales.id).label("transactions")
+        ).where(models.Sales.tenant_id == tenant_id)
+
+        if start_dt:
+            monthly_stmt = monthly_stmt.where(models.Sales.created_at >= start_dt)
+        if end_dt:
+            monthly_stmt = monthly_stmt.where(models.Sales.created_at <= end_dt)
+
         monthly_stmt = (
-            select(
-                func.date_trunc('month', models.Sales.created_at).label("month_start"),
-                func.coalesce(func.sum(models.Sales.total_amount), 0).label("revenue"),
-                func.count(models.Sales.id).label("transactions")
-            )
-            .where(models.Sales.tenant_id == tenant_id)
-            .group_by(func.date_trunc('month', models.Sales.created_at))
-            .order_by(func.date_trunc('month', models.Sales.created_at).desc())
+            monthly_stmt
+            .group_by(month_expr)
+            .order_by(month_expr.desc())
             .limit(6)
         )
+
         monthly_result = await self.db.execute(monthly_stmt)
         monthly_rows = monthly_result.all()
-        monthly_sales = [
-            {
-                "month": row.month_start.strftime("%B %Y"),
-                "revenue": row.revenue,
-                "transactions": row.transactions
-            }
-            for row in reversed(monthly_rows)
-        ]
+        monthly_sales = []
+        for row in reversed(monthly_rows):
+            month_value = row.month_start
+            if isinstance(month_value, str):
+                month_dt = datetime.strptime(month_value, "%Y-%m-%d")
+            else:
+                month_dt = month_value
+
+            monthly_sales.append(
+                {
+                    "month": month_dt.strftime("%B %Y"),
+                    "revenue": row.revenue,
+                    "transactions": row.transactions
+                }
+            )
 
         best_sellers_stmt = (
             select(
@@ -168,6 +218,15 @@ class SalesRepository:
             .select_from(models.SaleItems)
             .join(models.Sales, models.SaleItems.sale_id == models.Sales.id)
             .where(models.Sales.tenant_id == tenant_id)
+        )
+
+        if start_dt:
+            best_sellers_stmt = best_sellers_stmt.where(models.Sales.created_at >= start_dt)
+        if end_dt:
+            best_sellers_stmt = best_sellers_stmt.where(models.Sales.created_at <= end_dt)
+
+        best_sellers_stmt = (
+            best_sellers_stmt
             .group_by(models.SaleItems.title, models.SaleItems.isbn)
             .order_by(func.sum(models.SaleItems.quantity_sold).desc(), func.sum(models.SaleItems.total_price).desc())
             .limit(10)

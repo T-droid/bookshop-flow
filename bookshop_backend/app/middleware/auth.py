@@ -13,6 +13,7 @@ def get_current_user(
         payload = decode_access_token(token)
         role = payload.get("role")
         if role not in ["superadmin", "admin"]:
+            print(f"DEBUG: User role '{role}' is not authorized")
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You do not have permission to perform this action"

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from .monthly_sales_summary import MonthlySalesSummary
     from .tax_rates import TaxRates
     from .audit_logs import AuditLog
+    from .payments import Payments
 
 
 class Tenant(SQLModel, table=True):
@@ -40,6 +41,7 @@ class Tenant(SQLModel, table=True):
     monthly_sales_summaries: List["MonthlySalesSummary"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
     tax_rates: List["TaxRates"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
     audit_logs: List["AuditLog"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
+    payments: List["Payments"] = Relationship(back_populates="tenant", cascade_delete=True, passive_deletes=True)
 
     def __repr__(self):
         return f"Tenant(id={self.id}, name={self.name}, contact_email={self.contact_email})"

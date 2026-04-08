@@ -126,9 +126,13 @@ class SalesService:
                 error=f"Failed to retrieve dashboard summary: {str(e)}"
             )
 
-    async def get_reports_summary(self, tenant_id: uuid.UUID) -> ServiceResult:
+    async def get_reports_summary(self, tenant_id: uuid.UUID, date_from: str = None, date_to: str = None) -> ServiceResult:
         try:
-            summary = await self.repository.get_reports_summary(tenant_id=tenant_id)
+            summary = await self.repository.get_reports_summary(
+                tenant_id=tenant_id,
+                date_from=date_from,
+                date_to=date_to
+            )
             validated_summary = SalesReportsSummaryResponse.model_validate(summary)
             return ServiceResult(success=True, data=validated_summary.model_dump())
         except Exception as e:

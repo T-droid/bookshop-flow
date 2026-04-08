@@ -76,11 +76,18 @@ export const useGetSalesDashboardSummary = (recentLimit: number = 5): UseQueryRe
     })
 }
 
-export const useGetSalesReportsSummary = (): UseQueryResult<SalesReportsSummary | null, Error> => {
+export const useGetSalesReportsSummary = (
+    dateFrom?: string,
+    dateTo?: string
+): UseQueryResult<SalesReportsSummary | null, Error> => {
     return useQuery<SalesReportsSummary | null, Error>({
-        queryKey: ["salesReportsSummary"],
+        queryKey: ["salesReportsSummary", dateFrom, dateTo],
         queryFn: async () => {
-            const response = await apiClient.get("/sales/reports-summary");
+            const params = new URLSearchParams();
+            if (dateFrom) params.append("date_from", dateFrom);
+            if (dateTo) params.append("date_to", dateTo);
+            const query = params.toString();
+            const response = await apiClient.get(`/sales/reports-summary${query ? `?${query}` : ""}`);
             return response.data;
         },
         staleTime: 5 * 60 * 1000

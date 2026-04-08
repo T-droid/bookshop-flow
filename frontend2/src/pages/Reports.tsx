@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useGetInventory, useGetSalesReportsSummary } from "@/hooks/useGetResources";
+import { useMemo, useState } from "react";
 
 const currencyFormatter = new Intl.NumberFormat("en-KE", {
   style: "currency",
@@ -15,12 +16,35 @@ const currencyFormatter = new Intl.NumberFormat("en-KE", {
 });
 
 export default function Reports() {
-  const { data: salesReports, isLoading: loadingSalesReports } = useGetSalesReportsSummary();
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const { data: salesReports, isLoading: loadingSalesReports } = useGetSalesReportsSummary(
+    dateFrom || undefined,
+    dateTo || undefined
+  );
   const { data: inventoryData, isLoading: loadingInventory } = useGetInventory(10);
 
-  const bestSellers = salesReports?.best_sellers ?? [];
+  const numericSalesReports = useMemo(() => ({
+    total_revenue: Number(salesReports?.total_revenue ?? 0),
+    total_transactions: Number(salesReports?.total_transactions ?? 0),
+    average_order_value: Number(salesReports?.average_order_value ?? 0),
+    monthly_sales: (salesReports?.monthly_sales ?? []).map((item) => ({
+      month: item.month,
+      revenue: Number(item.revenue ?? 0),
+      transactions: Number(item.transactions ?? 0),
+    })),
+    best_sellers: (salesReports?.best_sellers ?? []).map((item) => ({
+      title: item.title,
+      isbn: item.isbn,
+      units_sold: Number(item.units_sold ?? 0),
+      revenue: Number(item.revenue ?? 0),
+    })),
+  }), [salesReports]);
+
+  const bestSellers = numericSalesReports.best_sellers;
   const lowStockItems = inventoryData?.low_stock_items ?? [];
-  const monthlySales = salesReports?.monthly_sales ?? [];
+  const monthlySales = numericSalesReports.monthly_sales;
   const totalInventoryQuantity = inventoryData?.top_items?.reduce((sum, item) => sum + item.stock, 0) ?? 0;
 
   return (
@@ -33,9 +57,21 @@ export default function Reports() {
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Input type="date" className="bg-background" />
+              <Input
+                type="date"
+                className="bg-background"
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                max={dateTo || undefined}
+              />
               <span className="text-muted-foreground">to</span>
-              <Input type="date" className="bg-background" />
+              <Input
+                type="date"
+                className="bg-background"
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                min={dateFrom || undefined}
+              />
             </div>
           </div>
         </div>
@@ -52,21 +88,21 @@ export default function Reports() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <StatsCard
                 title="Total Revenue"
-                value={loadingSalesReports ? "..." : currencyFormatter.format(salesReports?.total_revenue ?? 0)}
+                value={loadingSalesReports ? "..." : currencyFormatter.format(numericSalesReports.total_revenue)}
                 change="All recorded sales"
                 changeType="positive"
                 icon={<TrendingUp className="w-6 h-6 text-accent" />}
               />
               <StatsCard
                 title="Total Transactions"
-                value={loadingSalesReports ? "..." : salesReports?.total_transactions ?? 0}
+                value={loadingSalesReports ? "..." : numericSalesReports.total_transactions}
                 change="Successful checkout records"
                 changeType="positive"
                 icon={<TrendingUp className="w-6 h-6 text-primary" />}
               />
               <StatsCard
                 title="Average Order"
-                value={loadingSalesReports ? "..." : currencyFormatter.format(salesReports?.average_order_value ?? 0)}
+                value={loadingSalesReports ? "..." : currencyFormatter.format(numericSalesReports.average_order_value)}
                 change="Average revenue per sale"
                 changeType="positive"
                 icon={<TrendingUp className="w-6 h-6 text-gold" />}

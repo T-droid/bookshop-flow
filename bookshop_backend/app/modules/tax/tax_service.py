@@ -71,8 +71,6 @@ class TaxService:
         """
         try:
             default_tax = await self.repo.get_default_tax_rate(tenant_id)
-            if not default_tax:
-                return ServiceResult(success=False, error="No default tax rate found")
             return ServiceResult(success=True, data=default_tax)
         except Exception as e:
             return ServiceResult(success=False, error=str(e))
