@@ -482,7 +482,10 @@ export default function Sales() {
 
   const [triggerBookCheck, setTriggerBookCheck] = useState(false);
 
-  const { data: bookData } = useCheckBookAvailability(isbnValue, triggerBookCheck);
+  const { data: bookData, isFetching: isCheckingBook } = useCheckBookAvailability(isbnValue, triggerBookCheck);
+  const normalizedIsbn = typeof isbnValue === 'string' ? isbnValue.trim() : '';
+  const isBookConfirmed =
+    !!availableBook?.book_found && availableBook.isbn_number === normalizedIsbn;
 
 
   // Update the useEffect for ISBN validation and book checking
@@ -491,13 +494,11 @@ export default function Sales() {
       if (isbnValue && isbnValue.length >= 10) {
         // Clear any existing errors when we start checking
         clearErrors('isbn');
-        const existingItem = cartItems.find(item => item.isbn === isbnValue);
-        if (existingItem) {
-          setAvailableBook({ ...existingItem, book_found: true, available_quantity: existingItem.StockLevel, isbn_number: existingItem.isbn });
-        }
+        setAvailableBook(null);
         setTriggerBookCheck(true);
       } else if (isbnValue && isbnValue.length < 10) {
         // Set validation error for short ISBN
+        setAvailableBook(null);
         setError('isbn', {
           type: 'manual',
           message: 'ISBN must be at least 10 characters'
@@ -505,6 +506,7 @@ export default function Sales() {
         setTriggerBookCheck(false);
       } else {
         // Clear errors when input is empty
+        setAvailableBook(null);
         clearErrors('isbn');
         setTriggerBookCheck(false);
       }
@@ -523,12 +525,12 @@ export default function Sales() {
       setTriggerBookCheck(false);
 
       if (bookData.success && bookData.book.book_found) {
-        // Book found - clear any errors and add to cart
+        // Book found - clear errors and enable Add action
         clearErrors('isbn');
         setAvailableBook(bookData.book);
-        addItemByISBN();
       } else if (bookData.success && !bookData.book.book_found) {
         // Book not found - show appropriate error
+        setAvailableBook(null);
         setError('isbn', {
           type: 'manual',
           message: 'Book not found - search catalog?'
@@ -536,6 +538,7 @@ export default function Sales() {
       } else if (!bookData.success) {
         console.log(bookData);
         // API error - show server error
+        setAvailableBook(null);
         setError('isbn', {
           type: 'manual',
           message: 'Server error - please try again'
@@ -564,18 +567,6 @@ export default function Sales() {
           <div className="flex items-center justify-between">
             {/* Left: Shop Info */}
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-                  <Receipt className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold text-foreground">Cozy Corner Books</h1>
-                  <p className="text-sm text-muted-foreground">Point of Sale System</p>
-                </div>
-              </div>
-
-              <Separator orientation="vertical" className="h-8" />
-
               <div className="flex items-center gap-3">
                 <User className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">{cashierName}</span>
@@ -645,14 +636,21 @@ export default function Sales() {
                         {...register('isbn')}
                         type="text"
                         placeholder="Enter ISBN or scan barcode..."
-                        onKeyPress={(e) => e.key === 'Enter' && handleSubmit(addItemByISBN)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (isBookConfirmed) {
+                              void handleSubmit(addItemByISBN)();
+                            }
+                          }
+                        }}
                         className="text-lg"
                       />
                     </div>
                     <Button
                       variant="accent"
                       onClick={handleSubmit(addItemByISBN)}
-                      disabled={!isbnValue}
+                      disabled={!isBookConfirmed || !!errors.isbn || isCheckingBook}
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add

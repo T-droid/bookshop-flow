@@ -1,4 +1,3 @@
-import { Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import useRedirect from "@/hooks/useRedirect";
+import logo from "@/assets/logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -58,8 +58,15 @@ export default function Login() {
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-glow">
-            <Book className="w-8 h-8 text-primary-foreground" />
+          <div className="mx-auto w-20 h-20 rounded-2xl bg-background/90 ring-1 ring-border shadow-glow p-2 flex items-center justify-center">
+            <img
+              src={logo}
+              alt="Bookshop logo"
+              loading="lazy"
+              width={64}
+              height={64}
+              className="h-full w-full object-contain"
+            />
           </div>
           <h1 className="mt-4 text-3xl font-bold text-foreground">BookShelf IMS</h1>
           <p className="mt-2 text-muted-foreground">Welcome back to your bookshop</p>
